@@ -2,12 +2,12 @@
 "use strict";
 (function () {
 const X = window.__codex;
-const { isBoss, ROUTES, IX, S, BIOMES, BKEY, BKEYNAME, CATS, CATNAME, DTYPES, DNAME, PIECE_CAT, esc, fmt, pct, tname, tb, visible, secs,
+const { noteBox, isBoss, ROUTES, IX, S, BIOMES, BKEY, BKEYNAME, CATS, CATNAME, DTYPES, DNAME, PIECE_CAT, esc, fmt, pct, tname, tb, visible, secs,
   itemLink, mobLink, pieceLink, stationLink, costList, cmd, dmgMods, itemIcon, mobIcon, pieceIcon, LS } = X;
 let D;
 const fresh = () => (D = X.D());
 const UI = { cat: LS.get("cat", "weapon"), itier: "all", ifilt: "", sort: { k: "ti", d: 1 }, stars: 0, pcat: "all", pfilt: "", mfilt: "" };
-const SRC_KIND = { drop: "Drop", pick: "Pick", grow: "Grow", mine: "Mine", tree: "Chop", break: "Break", chest: "Chest", conv: "Made", trader: "Buy" };
+const SRC_KIND = { drop: "Drop", pick: "Pick", grow: "Grow", mine: "Mine", tree: "Chop", break: "Break", chest: "Chest", conv: "Made", trader: "Buy", note: "Info" };
 
 // ---------------------------------------------------------------- stat helpers
 function qDmg(it, q) {
@@ -108,12 +108,12 @@ ROUTES.items.after = function () {
 ROUTES.item = function (id) {
   fresh();
   const it = D.items[id];
-  if (!it) return `<div class="note warnnote">No item called <code>${esc(id)}</code> in this dump.</div>`;
+  if (!it) return `<div class="note warnnote">No item called <code>${esc(id)}</code>.</div>`;
   const recs = D.recipes[id] || [];
   const mq = it.mq || 1;
   const spoiler = !visible(it.ti) ? `<div class="note warnnote">Spoiler: this is from ${esc(tname(it.ti))}, past where you've set "I've reached".</div>` : "";
   let h = `${spoiler}<div class="dh">${itemIcon(id, "l")}<div class="ttl"><h1 class="t${it.ti ?? ""}">${esc(it.n)}</h1>
-    <div class="meta">${tb(it.ti)}<span class="tag">${esc(it.s || CATNAME[it.c] || it.c)}</span>${it.sk ? `<span class="tag">Skill: ${esc(it.sk)}</span>` : ""}${it.uo ? `<span class="tag uo">No known source in this dump</span>` : ""}</div>
+    <div class="meta">${tb(it.ti)}<span class="tag">${esc(it.s || CATNAME[it.c] || it.c)}</span>${it.sk ? `<span class="tag">Skill: ${esc(it.sk)}</span>` : ""}${it.uo ? `<span class="tag uo">No known source</span>` : ""}</div>
     ${it.d ? `<div class="desc">${esc(it.d)}</div>` : ""}
     <div class="cmd"><span class="small">Prefab</span> ${cmd(id)} <span class="small">Spawn</span> ${cmd(`spawn ${id} ${it.st > 1 ? Math.min(it.st, 50) : 1}${mq > 1 ? " " + mq : ""}`)}</div></div></div>`;
 
@@ -175,25 +175,35 @@ ROUTES.item = function (id) {
   h += `</div></div>`;
 
   // ---- how to get
-  const src = D.src[id] || [];
-  h += `<h2>How to get</h2>`;
-  if (!src.length && !recs.length) h += `<p class="empty">No known source in this dump.</p>`;
-  else if (!src.length) h += `<p class="dim">Crafted (see recipe above).</p>`;
+  const srcAll = D.src[id] || [];
+  const srcTier = s => s.k === "drop" ? (D.creatures[s.id] ? D.creatures[s.id].ti : null) : s.k === "conv" ? (D.pieces[s.id] ? D.pieces[s.id].ti : null) : s.ti;
+  const src = srcAll.filter(s => visible(srcTier(s)));
+  const srcHidden = srcAll.length - src.length;
+  h += `<h2>How to get</h2>` + noteBox("item/" + id);
+  if (!srcAll.length && !recs.length) h += `<p class="empty">No known source.</p>`;
+  else if (!srcAll.length) h += `<p class="dim">Crafted (see recipe above).</p>`;
+  else if (!src.length) h += `<p class="dim">Only found in biomes you haven't reached yet.</p>`;
   else h += `<div class="src">${src.map(srcRow).join("")}</div>`;
+  if (srcHidden && src.length) h += `<div class="hiddenmore">+ ${srcHidden} more source${srcHidden > 1 ? "s" : ""} in biomes you haven't reached yet</div>`;
 
   // ---- used in
-  const used = (IX.usedIn[id] || []).filter(i => D.items[i] && (S.showUnused || !D.items[i].uo));
-  const upg = IX.upgraderFor[id] || [];
-  const pcs = (IX.pieceUses[id] || []);
-  const cv = IX.convIn[id] || [];
+  const usedAll = (IX.usedIn[id] || []).filter(i => D.items[i] && (S.showUnused || !D.items[i].uo));
+  const used = usedAll.filter(i => visible(D.items[i].ti));
+  const upg = (IX.upgraderFor[id] || []).filter(i => D.items[i] && visible(D.items[i].ti));
+  const pcsAll = (IX.pieceUses[id] || []);
+  const pcs = pcsAll.filter(p => visible(D.pieces[p].ti));
+  const cv = (IX.convIn[id] || []).filter(c => !D.pieces[c] || visible(D.pieces[c].ti));
+  const usedHidden = (usedAll.length - used.length) + (pcsAll.length - pcs.length);
   h += `<h2>Used in</h2>`;
-  if (!used.length && !pcs.length && !cv.length && !upg.length) h += `<p class="empty">Not used in any recipe.</p>`;
+  if (!used.length && !pcs.length && !cv.length && !upg.length) h += usedHidden ? `<p class="dim">Only used in things from biomes you haven't reached yet.</p>` : `<p class="empty">Not used in any recipe.</p>`;
   if (used.length) h += `<h3>Crafting (${used.length})</h3><div class="grid sm">${used.sort((a, b) => (D.items[a].ti ?? 9) - (D.items[b].ti ?? 9)).map(i => `<div class="card row">${itemLink(i, { size: "" })}</div>`).join("")}</div>`;
   if (upg.length) h += `<h3>Upgrades (${upg.length})</h3><div class="grid sm">${upg.map(i => `<div class="card row">${itemLink(i, { size: "" })}</div>`).join("")}</div>`;
   if (cv.length) h += `<h3>Production</h3><div class="src">${cv.map(cid => { const c = D.conv[cid]; const rows = (c.l || []).filter(x => x[0] === id); return rows.length ? rows.map(x => `<div class="r">${pieceLink(cid)} turns it into ${itemLink(x[1])}</div>`).join("") : `<div class="r">${pieceLink(cid)} <span class="dim">${c.inc ? "(incinerator input)" : "(fuel/input)"}</span></div>`; }).join("")}</div>`;
-  if (pcs.length) h += `<h3>Building pieces (${pcs.length})</h3><div class="grid sm">${pcs.filter(p => visible(D.pieces[p].ti)).slice(0, 80).map(p => `<div class="card row">${pieceLink(p, { size: "" })}</div>`).join("")}</div>`;
+  if (pcs.length) h += `<h3>Building pieces (${pcs.length})</h3><div class="grid sm">${pcs.slice(0, 80).map(p => `<div class="card row">${pieceLink(p, { size: "" })}</div>`).join("")}</div>`;
+  if (usedHidden && (used.length || pcs.length)) h += `<div class="hiddenmore">+ ${usedHidden} more in biomes you haven't reached yet</div>`;
   return h;
 };
+ROUTES.item.tierOf = id => { fresh(); return D.items[id] ? D.items[id].ti : null; };
 function srcRow(s) {
   const kind = `<span class="kind">${SRC_KIND[s.k] || s.k}</span>`;
   const where = (s.pl ? `<span class="dim">${esc(s.pl)}</span>` : "") + (s.b && s.b.length ? ` <span class="faint">${s.b.map(b => BKEYNAME[b] || b).join(", ")}</span>` : "");
@@ -208,6 +218,7 @@ function srcRow(s) {
     case "mine": case "tree": case "break": case "chest":
       return `<div class="r">${kind}<span>${esc(s.n)}</span> ${amt(s.min, s.max)} ${where} ${s.ti != null ? tb(s.ti) : ""} <code class="faint">${esc(s.id)}</code></div>`;
     case "conv": return `<div class="r">${kind}${pieceLink(s.id)}${s.from ? ` from ${itemLink(s.from)}` : ""}</div>`;
+    case "note": return `<div class="r">${kind}<span>${esc(s.n)}</span> ${s.pl ? `<span class="dim">${esc(s.pl)}</span>` : ""} ${s.ti != null ? tb(s.ti) : ""}</div>`;
     case "trader": return `<div class="r">${kind}<a href="#traders">${esc(s.n)}</a> <b>${s.price}</b> coins${s.stack > 1 ? ` for ${s.stack}` : ""} <span class="dim">${esc(s.pl || "")}</span>${s.req ? ` <span class="tag">needs ${esc(s.req)}</span>` : ""} ${tb(s.ti)}</div>`;
   }
   return `<div class="r">${kind}${esc(s.id)}</div>`;
@@ -255,7 +266,7 @@ function bestWeapons(c, limitTier) {
 ROUTES.mob = function (cid) {
   fresh();
   const c = D.creatures[cid];
-  if (!c) return `<div class="note warnnote">No creature called <code>${esc(cid)}</code> in this dump.</div>`;
+  if (!c) return `<div class="note warnnote">No creature called <code>${esc(cid)}</code>.</div>`;
   const boss = isBoss(c);
   const stars = boss ? 0 : UI.stars;
   const mult = Math.pow(2, stars);
@@ -265,6 +276,7 @@ ROUTES.mob = function (cid) {
     <div class="cmd"><span class="small">Prefab</span> ${cmd(cid)} <span class="small">Spawn</span> ${cmd(`spawn ${cid} 1 ${stars + 1}`)}</div></div></div>`;
   if (!boss) h += `<div style="margin:10px 0"><span class="small">Stars:</span> <span class="stars">${[0, 1, 2].map(s => `<span class="chip${s === stars ? " on" : ""}" data-star="${s}">${s ? "★".repeat(s) : "0"}</span>`).join("")}</span></div>`;
   const hp = c.hp * (stars + 1);
+  h += noteBox("mob/" + cid);
   h += `<div class="cols"><div><h2>Combat</h2><dl class="kv"><dt>Health</dt><dd><b>${fmt(hp)}</b>${stars ? ` <span class="faint">(${fmt(c.hp)} × ${stars + 1})</span>` : ""}</dd>
     <dt>Damage taken</dt><dd>${dmgMods(c.mods)}</dd>
     ${c.stag != null ? `<dt>Stagger</dt><dd>${fmt(c.stag)} <span class="faint">(stagger damage factor)</span></dd>` : ""}
@@ -302,20 +314,25 @@ ROUTES.mob = function (cid) {
   h += `</div></div>`;
   // spawns
   h += `<h2>Where it spawns</h2>`;
-  const sp = c.sp || [];
-  if (!sp.length) h += `<p class="dim">No natural world spawns. It comes from locations, spawners, dungeons or events.</p>`;
+  const spAll = (c.sp || []).map(x => Object.assign({}, x, { b: x.b.filter(b => visible(BKEY[b])) }));
+  const sp = spAll.filter(x => x.b.length);
+  if (!sp.length && spAll.length) h += `<p class="dim">Only spawns naturally in biomes you haven't reached yet.</p>`;
+  else if (!sp.length) h += `<p class="dim">No natural world spawns. It comes from locations, spawners, dungeons or events.</p>`;
   else h += `<div class="tw"><table><tr><th>Biome</th><th>When</th><th>Stars</th><th class="n">Max</th><th>Condition</th></tr>${sp.map(s => `<tr><td>${s.b.map(b => `<a class="t${BKEY[b]}" href="#biome/${BKEY[b]}">${esc(BKEYNAME[b] || b)}</a>`).join(", ")}</td>
     <td>${s.d && s.n ? "Day & night" : s.n ? "Night" : "Day"}</td><td>${s.lv ? (s.lv[1] > 1 ? `up to ${"★".repeat(s.lv[1] - 1)}` : "none") : ""}</td><td class="n">${s.max ?? ""}</td>
     <td>${[s.key ? keyText(s.key) : "", s.ev ? `event <code>${esc(s.ev)}</code>` : "", (s.env || []).length ? `weather: ${s.env.map(esc).join(", ")}` : "", s.alt && s.alt[0] != null && s.alt[0] > -1000 ? `altitude ≥ ${s.alt[0]}` : ""].filter(Boolean).join(" · ") || `<span class="faint">—</span>`}</td></tr>`).join("")}</table></div>`;
   // variants
+  const varsShown = (c.vars || []).filter(v => visible(v.ti));
   if (c.vars) {
     h += `<h2>Versions</h2><div class="small">The game has a separate version of this creature for each place it shows up.</div><div class="tw"><table><tr><th>Prefab</th><th class="n">HP</th><th>Tier</th><th>Spawns in</th><th>Notes</th></tr>
-      ${c.vars.map(v => `<tr><td>${cmd(v.id)}</td><td class="n">${fmt(v.hp)}</td><td>${tb(v.ti)}</td><td class="dim">${(v.b || []).map(b => BKEYNAME[b] || b).join(", ") || "spawners / locations"}${v.key ? ` <span class="tag">after a boss</span>` : ""}</td><td class="dim">${esc(v.note || "")}</td></tr>`).join("")}</table></div>`;
+      ${varsShown.map(v => `<tr><td>${cmd(v.id)}</td><td class="n">${fmt(v.hp)}</td><td>${tb(v.ti)}</td><td class="dim">${(v.b || []).filter(b => visible(BKEY[b])).map(b => BKEYNAME[b] || b).join(", ") || "spawners / locations"}${v.key ? ` <span class="tag">after a boss</span>` : ""}</td><td class="dim">${esc(v.note || "")}</td></tr>`).join("")}</table></div>`;
+    if (varsShown.length < c.vars.length) h += `<div class="hiddenmore">+ ${c.vars.length - varsShown.length} more version${c.vars.length - varsShown.length > 1 ? "s" : ""} in biomes you haven't reached yet</div>`;
   } else if ((c.var || []).length > 1) {
     h += `<h2>Other prefabs</h2><div class="cmd">${c.var.filter(v => v !== cid).map(v => cmd(v)).join(" ")}</div>`;
   }
   return h;
 };
+ROUTES.mob.tierOf = cid => { fresh(); return D.creatures[cid] ? D.creatures[cid].ti : null; };
 ROUTES.mob.after = function () {
   document.querySelectorAll("[data-star]").forEach(c => c.onclick = () => { UI.stars = +c.dataset.star; X.route.keepScroll = true; X.route(); });
 };
@@ -358,11 +375,12 @@ ROUTES.piece = function (pid) {
   fresh();
   const p = D.pieces[pid];
   const cv = D.conv[pid];
-  if (!p && !cv) return `<div class="note warnnote">No piece called <code>${esc(pid)}</code> in this dump.</div>`;
+  if (!p && !cv) return `<div class="note warnnote">No piece called <code>${esc(pid)}</code>.</div>`;
   const P = p || { n: cv.n };
   let h = `<div class="dh">${pieceIcon(pid, "l")}<div class="ttl"><h1 class="t${P.ti ?? ""}">${esc(P.n)}</h1>
     <div class="meta">${tb(P.ti)}${P.cat ? `<span class="tag">${esc(PIECE_CAT[P.cat] || P.cat)}</span>` : ""}${P.tool ? `<span class="tag">${esc(P.tool)}</span>` : ""}</div>
     ${P.d ? `<div class="desc">${esc(P.d)}</div>` : ""}<div class="cmd"><span class="small">Prefab</span> ${cmd(pid)}</div></div></div>`;
+  h += noteBox("piece/" + pid);
   h += `<div class="cols"><div><h2>Build</h2><dl class="kv"><dt>Cost</dt><dd>${costList(P.res)}</dd><dt>Needs</dt><dd>${stationLink(P.st)}</dd>
     ${P.cf ? `<dt>Comfort</dt><dd>${P.cf[0]} <span class="faint">(${esc(P.cf[1] || "")} group – only the best piece in each group counts)</span></dd>` : ""}
     ${P.hp ? `<dt>Health</dt><dd>${fmt(P.hp)}</dd>` : ""}
@@ -371,13 +389,18 @@ ROUTES.piece = function (pid) {
   const parents = Object.entries(D.pieces).filter(([, q]) => q.cs && (q.cs.ext || []).includes(pid));
   if (parents.length) h += `<h3>Upgrade for</h3><div class="cost">${parents.map(([q]) => pieceLink(q)).join("")}</div>`;
   if (P.cs) {
-    h += `<h3>Station levels</h3><div class="small">Max level ${P.cs.max}. Each upgrade below adds one level when built nearby.</div><div class="src">${(P.cs.ext || []).map((e, i) => `<div class="r"><span class="kind">Level ${i + 2}</span>${D.pieces[e] ? pieceLink(e) + " " + costList(D.pieces[e].res) : `<code>${esc(e)}</code>`}</div>`).join("")}</div>`;
+    const exts = (P.cs.ext || []).map((e, i) => [e, i]);
+    const extShown = exts.filter(([e]) => !D.pieces[e] || visible(D.pieces[e].ti));
+    h += `<h3>Station levels</h3><div class="small">Max level ${P.cs.max}. Each upgrade below adds one level when built nearby.</div><div class="src">${extShown.map(([e, i]) => `<div class="r"><span class="kind">Level ${i + 2}</span>${D.pieces[e] ? pieceLink(e) + " " + costList(D.pieces[e].res) : `<code>${esc(e)}</code>`}</div>`).join("")}</div>`;
+    if (extShown.length < exts.length) h += `<div class="hiddenmore">+ ${exts.length - extShown.length} more upgrade${exts.length - extShown.length > 1 ? "s" : ""} in biomes you haven't reached yet</div>`;
   }
   h += `</div><div>`;
   if (cv) {
     h += `<h2>Production</h2><dl class="kv">${cv.fuel ? `<dt>Fuel</dt><dd>${itemLink(cv.fuel)}${cv.fpp ? ` <span class="faint">${cv.fpp} per item</span>` : ""}</dd>` : ""}
       ${cv.t ? `<dt>Time</dt><dd>${secs(cv.t)} per item</dd>` : ""}${cv.max ? `<dt>Holds</dt><dd>${cv.max} items${cv.mf ? `, ${cv.mf} fuel` : ""}</dd>` : ""}</dl>`;
-    if ((cv.l || []).length) h += `<div class="tw"><table><tr><th>Put in</th><th>Get out</th>${cv.l.some(x => x[2]) ? `<th class="n">Makes</th>` : ""}</tr>${cv.l.map(x => `<tr><td>${itemLink(x[0])}</td><td>${itemLink(x[1])}</td>${cv.l.some(y => y[2]) ? `<td class="n">${x[2] || 1}</td>` : ""}</tr>`).join("")}</table></div>`;
+    const cvl = (cv.l || []).filter(x => visible((D.items[x[0]] || {}).ti) && visible((D.items[x[1]] || {}).ti));
+    if (cvl.length) h += `<div class="tw"><table><tr><th>Put in</th><th>Get out</th>${cv.l.some(x => x[2]) ? `<th class="n">Makes</th>` : ""}</tr>${cvl.map(x => `<tr><td>${itemLink(x[0])}</td><td>${itemLink(x[1])}</td>${cv.l.some(y => y[2]) ? `<td class="n">${x[2] || 1}</td>` : ""}</tr>`).join("")}</table></div>`;
+    if ((cv.l || []).length > cvl.length) h += `<div class="hiddenmore">+ ${cv.l.length - cvl.length} more in biomes you haven't reached yet</div>`;
     if (cv.out) h += `<p>Produces ${itemLink(cv.out)} over time.</p>`;
     if ((cv.inc || []).length) h += `<h3>Accepts</h3><div class="cost">${cv.inc.map(x => itemLink(Array.isArray(x) ? x[0] : x)).join("")}</div>`;
   }
@@ -391,6 +414,8 @@ ROUTES.piece = function (pid) {
   h += `</div></div>`;
   return h;
 };
+
+ROUTES.piece.tierOf = pid => { fresh(); return D.pieces[pid] ? D.pieces[pid].ti : null; };
 
 // ---------------------------------------------------------------- stations
 ROUTES.stations = function () {
@@ -408,8 +433,8 @@ ROUTES.stations = function () {
 ROUTES.traders = function () {
   fresh();
   const tr = D.traders || {};
-  if (!Object.keys(tr).length) return `<h1>Traders</h1><p class="empty">No trader data in this dump.</p>`;
-  return `<h1>Traders</h1><div class="note">Trader stock isn't in the CodexDump files yet, so it was added by hand to the converter. Server dumps may differ.</div>` +
+  if (!Object.keys(tr).length) return `<h1>Traders</h1><p class="empty">No trader data.</p>`;
+  return `<h1>Traders</h1><div class="note">Prices and unlocks for vanilla Valheim.</div>` +
     Object.entries(tr).map(([tid, t]) => `<h2>${esc(t.n)} <span class="small">${esc(t.b)}</span></h2><div class="tw"><table><tr><th>Item</th><th class="n">Price</th><th class="n">Amount</th><th>Unlocks after</th></tr>
       ${t.stock.filter(([iid]) => { const s = (D.src[iid] || []).find(x => x.k === "trader" && x.id === tid); return !s || visible(s.ti); })
         .map(([iid, price, stack, req]) => `<tr><td>${itemLink(iid)}</td><td class="n">${price}</td><td class="n">${stack}</td><td class="dim">${esc(req || "–")}</td></tr>`).join("")}</table></div>`).join("");

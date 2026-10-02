@@ -121,3 +121,12 @@ footer.sig img{width:min(360px,80vw);height:auto;display:block;margin:0 auto 6px
 .listtools input[type=checkbox]{min-width:0;padding:0}
 .toggle{display:inline-flex;gap:6px;align-items:center;color:var(--dim);font-size:.85rem;cursor:pointer}
 @media (max-width:640px){.top{position:static}.opts{width:100%}.opts label{flex:1}.opts select{width:100%}.dh h1{font-size:1.35rem}}
+
+.gate{max-width:640px;margin:40px auto;text-align:center;background:var(--card);border:1px solid var(--line);border-top:4px solid currentColor;border-radius:12px;padding:26px 22px}
+.gate h1{color:var(--text);font-size:1.5rem;margin:6px 0 10px}
+.gate .exp{font-size:.75rem;color:var(--faint);text-transform:uppercase;letter-spacing:1.5px}
+.gate .btn{display:inline-block;margin:4px}
+a.btn:hover{text-decoration:none}
+.tipnote{background:#1f2a1d;border-color:#3d5a36;color:#d6ecc9}
+.disclaimer{max-width:640px;margin:6px auto 0}
+.hiddenmore{font-size:.82rem;color:var(--faint);font-style:italic;padding:4px 0}
