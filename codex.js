@@ -35,6 +35,7 @@ const LS = {
   set(k, v) { try { localStorage.setItem("vcodex." + k, JSON.stringify(v)); } catch (e) { } },
 };
 const IX = {}; // indexes built per dump
+const DATA_VERSION = "5"; // bump when data/Vanilla.js changes so browsers fetch the new file
 
 // ---------------------------------------------------------------- helpers
 const $ = s => document.querySelector(s);
@@ -261,7 +262,7 @@ function loadDump(name) {
   };
   if (window.CODEX_DATA[name]) return go();
   const s = document.createElement("script");
-  s.src = `data/${encodeURIComponent(name)}.js`; s.onload = go;
+  s.src = `data/${encodeURIComponent(name)}.js?v=${DATA_VERSION}`; s.onload = go;
   s.onerror = () => { $("#main").innerHTML = `<div class="note warnnote">Couldn't find <code>data/${esc(name)}.js</code>.</div>`; };
   document.head.appendChild(s);
 }
@@ -306,7 +307,7 @@ ROUTES.home = function () {
     return `<a class="bcard t${b.t}" href="#biome/${b.t}">
       <div class="exp">${esc(b.exp)}</div><h3>${esc(b.n)}</h3>
       <div class="cnt">${items} items · ${mobs} creatures</div>
-      ${bosses.map(([id]) => `<div class="boss">${mobIcon(id, "s")}<span>${esc(D.creatures[id].n)}</span></div>`).join("")}
+      ${bosses.map(([id]) => `<div class="boss">${mobIcon(id, "m")}<span>${esc(D.creatures[id].n)}</span></div>`).join("")}
     </a>`;
   }).join("");
   const nItems = Object.values(D.items).filter(i => !i.uo).length;
