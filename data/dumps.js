@@ -1,0 +1,1 @@
+window.CODEX_DUMPS=["Vanilla"];
