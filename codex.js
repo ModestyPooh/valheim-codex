@@ -1,0 +1,371 @@
+/* Valheim Codex – made by ModestyPooh. Data: CodexDump (one file per dump in data/). */
+"use strict";
+(function () {
+
+// ---------------------------------------------------------------- constants
+const BIOMES = [
+  { t: 0, n: "Meadows", keys: ["Meadows"], exp: "The Beginning", blurb: "Gentle fields and forests where every viking starts." },
+  { t: 1, n: "Black Forest", keys: ["BlackForest"], exp: "Expansion I", blurb: "Dark woods with copper, tin, trolls and burial chambers." },
+  { t: 2, n: "Swamp & Ocean", keys: ["Swamp", "Ocean"], exp: "Expansion II", blurb: "Iron in the sunken crypts, serpents out at sea." },
+  { t: 3, n: "Mountains", keys: ["Mountain"], exp: "Expansion III", blurb: "Silver, wolves and drakes. Bring frost resistance." },
+  { t: 4, n: "Plains", keys: ["Plains"], exp: "Expansion IV", blurb: "Fulings, lox, barley and black metal." },
+  { t: 5, n: "Mistlands", keys: ["Mistlands"], exp: "Expansion V", blurb: "Dvergr, seekers and eitr in the mist." },
+  { t: 6, n: "Ashlands", keys: ["AshLands"], exp: "Expansion VI", blurb: "Fire, flametal and the Charred army." },
+  { t: 7, n: "Deep North", keys: ["DeepNorth"], exp: "Expansion VII", blurb: "Frozen halls, bloodgold and the Nord forges." },
+];
+const BKEY = { Meadows: 0, BlackForest: 1, Swamp: 2, Ocean: 2, Mountain: 3, Plains: 4, Mistlands: 5, AshLands: 6, DeepNorth: 7 };
+const BKEYNAME = { Meadows: "Meadows", BlackForest: "Black Forest", Swamp: "Swamp", Ocean: "Ocean", Mountain: "Mountains", Plains: "Plains", Mistlands: "Mistlands", AshLands: "Ashlands", DeepNorth: "Deep North" };
+const CATS = [
+  ["weapon", "Weapons"], ["armor", "Armor"], ["shield", "Shields"], ["ammo", "Ammo"], ["tool", "Tools"], ["trinket", "Trinkets & utility"],
+  ["food", "Food"], ["mead", "Meads"], ["mat", "Materials"], ["trophy", "Trophies"], ["fish", "Fish"], ["misc", "Misc"],
+];
+const CATNAME = Object.fromEntries(CATS);
+const DTYPES = ["blunt", "slash", "pierce", "fire", "frost", "lightning", "poison", "spirit", "chop", "pickaxe"];
+const DNAME = { blunt: "Blunt", slash: "Slash", pierce: "Pierce", fire: "Fire", frost: "Frost", lightning: "Lightning", poison: "Poison", spirit: "Spirit", chop: "Chop", pickaxe: "Pickaxe", damage: "Damage" };
+const ICON_ITEM = id => `https://valheim-modding.github.io/Jotunn/Documentation/images/items/${encodeURIComponent(id)}.png`;
+const ICON_PIECE = id => `https://valheim-modding.github.io/Jotunn/Documentation/images/pieces/${encodeURIComponent(id)}.png`;
+const PIECE_CAT = { "DEEPNORTH": "Deep North", "Misc.": "Misc", "Heavy Build": "Heavy build" };
+const BOSS_NAMES = { "The Elder": 1, "Moder": 3, "Yagluth": 4, "The Queen": 5, "Fader": 6 };
+
+// ---------------------------------------------------------------- state
+let D = null, DUMP = null;
+const S = { reach: 7, showUnused: false };
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem("vcodex." + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("vcodex." + k, JSON.stringify(v)); } catch (e) { } },
+};
+const IX = {}; // indexes built per dump
+
+// ---------------------------------------------------------------- helpers
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = n => n == null ? "–" : (Math.round(n * 100) / 100).toLocaleString("en-US");
+const pct = c => (c >= 1 ? "100" : (Math.round(c * 1000) / 10).toString()) + "%";
+const tname = t => t == null ? "Any biome" : BIOMES[t].n;
+const tb = t => t == null ? `<span class="tb faint">Any</span>` : `<a class="tb t${t}" href="#biome/${t}" title="${esc(BIOMES[t].exp)}">${esc(BIOMES[t].n)}</a>`;
+const visible = t => t == null || t <= S.reach;
+const secs = s => { if (s == null) return "–"; s = Math.round(s); if (s < 60) return s + "s"; const m = Math.floor(s / 60), r = s % 60; return m + "m" + (r ? " " + r + "s" : ""); };
+const isBoss = c => !!(c && c.f === "Boss" && c.key && /^defeated_/.test(c.key));
+const initials = n => (n || "?").replace(/[^A-Za-z0-9 ]/g, "").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("") || "?";
+
+function iconImg(kind, id, size, name) {
+  const cls = "ic" + (size ? " " + size : "");
+  const src = kind === "piece" ? ICON_PIECE(id) : ICON_ITEM(id);
+  return `<img class="${cls}" loading="lazy" src="${src}" alt="" data-ph="${esc(initials(name))}" data-sz="${size || ""}" onerror="codexIconFail(this)">`;
+}
+window.codexIconFail = function (img) {
+  const s = document.createElement("span");
+  s.className = "ph" + (img.dataset.sz ? " " + img.dataset.sz : ""); s.textContent = img.dataset.ph || "?";
+  img.replaceWith(s);
+};
+function itemIcon(id, size) { const it = D.items[id]; return iconImg("item", id, size, it ? it.n : id); }
+function mobIcon(cid, size) {
+  const tr = IX.trophyOf[cid];
+  if (tr) return iconImg("item", tr, size, D.creatures[cid].n);
+  return `<span class="ph${size ? " " + size : ""}">${esc(initials(D.creatures[cid] ? D.creatures[cid].n : cid))}</span>`;
+}
+function pieceIcon(pid, size) { const p = D.pieces[pid]; return iconImg("piece", pid, size, p ? p.n : pid); }
+
+function itemLink(id, opts) {
+  opts = opts || {};
+  const it = D.items[id];
+  if (!it) return `<span class="il"><span class="ph s">?</span><span class="mono">${esc(id)}</span></span>`;
+  const amount = opts.n != null ? `<b>${esc(opts.n)}×</b> ` : "";
+  return `<a class="il${it.uo ? " uo" : ""}" href="#item/${encodeURIComponent(id)}" data-tip="item:${esc(id)}">${itemIcon(id, opts.size === undefined ? "s" : opts.size)}<span>${amount}<span class="t${it.ti ?? ""}">${esc(it.n)}</span></span></a>`;
+}
+function mobLink(cid, opts) {
+  opts = opts || {};
+  const c = D.creatures[cid];
+  if (!c) return `<span class="mono">${esc(cid)}</span>`;
+  return `<a class="il" href="#mob/${encodeURIComponent(cid)}" data-tip="mob:${esc(cid)}">${mobIcon(cid, opts.size === undefined ? "s" : opts.size)}<span style="${c.mini ? "color:var(--orange)" : ""}">${esc(c.n)}</span></a>`;
+}
+function pieceLink(pid, opts) {
+  opts = opts || {};
+  const p = D.pieces[pid];
+  if (!p) { const cv = D.conv[pid]; return `<span>${esc(cv ? cv.n : pid)}</span>`; }
+  return `<a class="il" href="#piece/${encodeURIComponent(pid)}" data-tip="piece:${esc(pid)}">${pieceIcon(pid, opts.size === undefined ? "s" : opts.size)}<span>${esc(p.n)}</span></a>`;
+}
+function stationLink(st, lvl) {
+  if (!st) return `<span class="dim">By hand</span>`;
+  return pieceLink(st) + (lvl > 1 ? ` <span class="tag">level ${lvl}</span>` : "");
+}
+function costList(list, mult) {
+  if (!list || !list.length) return `<span class="empty">nothing</span>`;
+  return `<div class="cost">` + list.map(([id, n]) => itemLink(id, { n: n * (mult || 1) })).join("") + `</div>`;
+}
+function cmd(text) { return `<code title="Click to copy" data-copy="${esc(text)}">${esc(text)}</code>`; }
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 1400); }
+function copy(text) {
+  const done = () => toast("Copied: " + text);
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, () => fallback());
+  else fallback();
+  function fallback() { const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); done(); } catch (e) { } ta.remove(); }
+}
+function dmgMods(mods, opt) {
+  const out = [];
+  const cls = m => m >= 2 ? "vw" : m > 1 ? "w" : m === 0 ? "im" : m <= 0.25 ? "vr" : "r";
+  const lbl = m => m >= 2 ? "very weak" : m > 1 ? "weak" : m === 0 ? "immune" : m <= 0.25 ? "very resistant" : "resistant";
+  Object.entries(mods || {}).sort((a, b) => b[1] - a[1]).forEach(([k, m]) => {
+    if ((k === "chop" || k === "pickaxe") && m <= 1 && !(opt && opt.all)) return;
+    out.push(`<span class="dm ${cls(m)}" title="${lbl(m)} – takes ×${m} damage">${esc(DNAME[k] || k)} ×${m}</span>`);
+  });
+  return out.join("") || `<span class="dim">No weaknesses or resistances</span>`;
+}
+
+// ---------------------------------------------------------------- indexes
+function buildIndexes() {
+  for (const k of Object.keys(IX)) delete IX[k];
+  IX.usedIn = {}; IX.pieceUses = {}; IX.convIn = {}; IX.craftedAt = {}; IX.trophyOf = {}; IX.upgraderFor = {};
+  const push = (o, k, v) => (o[k] = o[k] || []).push(v);
+  for (const [iid, rl] of Object.entries(D.recipes)) {
+    for (const r of rl) {
+      if (r.st) push(IX.craftedAt, r.st, iid);
+      const seen = new Set();
+      for (const lv of r.lv) {
+        for (const [c] of lv.c) if (!seen.has(c)) { seen.add(c); push(IX.usedIn, c, iid); }
+        for (const [u] of (lv.u || [])) if (!seen.has(u)) { seen.add(u); push(IX.upgraderFor, u, iid); }
+      }
+    }
+  }
+  for (const [pid, p] of Object.entries(D.pieces)) {
+    if (p.tool === "Feaster") continue;
+    for (const [c] of p.res || []) push(IX.pieceUses, c, pid);
+  }
+  for (const [cid, c] of Object.entries(D.conv)) {
+    for (const x of c.l || []) push(IX.convIn, x[0], cid);
+    for (const x of c.inc || []) push(IX.convIn, x[0] || x, cid);
+  }
+  for (const [cid, c] of Object.entries(D.creatures)) {
+    const tr = (c.drops || []).find(d => /^Trophy/.test(d[0]));
+    if (tr) IX.trophyOf[cid] = tr[0];
+  }
+  // search index
+  IX.search = [];
+  for (const [id, it] of Object.entries(D.items)) IX.search.push({ k: "item", id, n: it.n, ti: it.ti, uo: it.uo, s: (it.n + " " + id).toLowerCase() });
+  for (const [id, c] of Object.entries(D.creatures)) IX.search.push({ k: "mob", id, n: c.n, ti: c.ti, s: (c.n + " " + id + " " + (c.var || []).join(" ")).toLowerCase() });
+  for (const [id, p] of Object.entries(D.pieces)) if (p.tool !== "Feaster") IX.search.push({ k: "piece", id, n: p.n, ti: p.ti, s: (p.n + " " + id).toLowerCase() });
+  // creatures per biome key (natural spawns)
+  IX.mobsIn = {};
+  for (const [cid, c] of Object.entries(D.creatures)) for (const sp of c.sp || []) for (const b of sp.b || []) {
+    const t = BKEY[b]; if (t == null) continue;
+    IX.mobsIn[t] = IX.mobsIn[t] || new Set(); IX.mobsIn[t].add(cid);
+  }
+}
+
+// ---------------------------------------------------------------- tooltip
+const tip = $("#tip");
+function tipHtml(kind, id) {
+  if (kind === "item") {
+    const it = D.items[id]; if (!it) return "";
+    let h = `<div class="tn t${it.ti ?? ""}">${esc(it.n)}</div><div class="ts">${esc(it.s || CATNAME[it.c] || "")} · ${esc(tname(it.ti))}</div>`;
+    const ln = [];
+    if (it.dmg && ["weapon", "ammo", "tool"].includes(it.c)) {
+      const d = Object.entries(it.dmg.b || {}).filter(([k, v]) => v && k !== "chop" && k !== "pickaxe" || (it.c === "tool" && v)).map(([k, v]) => `${v} ${DNAME[k] || k}`);
+      if (d.length) ln.push(d.join(" · "));
+    }
+    if (it.arm) ln.push(`Armor ${it.arm[0]}`);
+    if (it.blk) ln.push(`Block ${it.blk[0]} · Parry ×${it.blk[2]}`);
+    if (it.food) ln.push(`<span style="color:#ff9a8a">${it.food.health} HP</span> · <span style="color:#ffd66b">${it.food.stamina} Stam</span>${it.food.eitr ? ` · <span style="color:#a9a0ff">${it.food.eitr} Eitr</span>` : ""} · ${secs(it.food.duration)}`);
+    if (it.w != null) ln.push(`<span class="dim">Weight ${fmt(it.w)}${it.st > 1 ? " · Stack " + it.st : ""}</span>`);
+    h += ln.map(l => `<div class="tl">${l}</div>`).join("");
+    if (it.d) h += `<div class="td">${esc(it.d)}</div>`;
+    if (it.uo) h += `<div class="tl faint">No known way to get this in this dump</div>`;
+    return h;
+  }
+  if (kind === "mob") {
+    const c = D.creatures[id]; if (!c) return "";
+    return `<div class="tn" style="${c.mini ? "color:var(--orange)" : ""}">${esc(c.n)}</div><div class="ts">${esc(c.fl || c.f || "")} · ${esc(tname(c.ti))}</div>
+      <div class="tl">${fmt(c.hp)} HP${c.boss ? " · Boss" : ""}</div><div class="tl">${dmgMods(c.mods)}</div>`;
+  }
+  if (kind === "piece") {
+    const p = D.pieces[id]; if (!p) return "";
+    return `<div class="tn t${p.ti ?? ""}">${esc(p.n)}</div><div class="ts">${esc(PIECE_CAT[p.cat] || p.cat || "")} · ${esc(p.tool || "")} · ${esc(tname(p.ti))}</div>
+      <div class="tl">${(p.res || []).map(([r, n]) => `${n}× ${esc(D.items[r] ? D.items[r].n : r)}`).join(", ")}</div>${p.d ? `<div class="td">${esc(p.d)}</div>` : ""}`;
+  }
+  return "";
+}
+document.addEventListener("mouseover", e => {
+  const a = e.target.closest("[data-tip]");
+  if (!a) { tip.hidden = true; return; }
+  const [kind, ...rest] = a.dataset.tip.split(":");
+  const h = tipHtml(kind, rest.join(":"));
+  if (!h) { tip.hidden = true; return; }
+  tip.innerHTML = h; tip.hidden = false; placeTip(e);
+});
+document.addEventListener("mousemove", e => { if (!tip.hidden) placeTip(e); });
+function placeTip(e) {
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = e.clientX + 16, y = e.clientY + 14;
+  if (x + w > innerWidth - 8) x = e.clientX - w - 12;
+  if (y + h > innerHeight - 8) y = innerHeight - h - 8;
+  tip.style.left = Math.max(4, x) + "px"; tip.style.top = Math.max(4, y) + "px";
+}
+document.addEventListener("click", e => {
+  const c = e.target.closest("[data-copy]");
+  if (c) { copy(c.dataset.copy); }
+});
+
+// ---------------------------------------------------------------- search
+const qi = $("#q"), qr = $("#qres");
+let qsel = 0, qlist = [];
+function doSearch() {
+  const q = qi.value.trim().toLowerCase();
+  if (q.length < 2 || !D) { qr.hidden = true; return; }
+  const words = q.split(/\s+/);
+  qlist = IX.search.filter(x => visible(x.ti) && (S.showUnused || !x.uo) && words.every(w => x.s.includes(w)))
+    .map(x => ({ x, sc: (x.n.toLowerCase() === q ? 0 : x.n.toLowerCase().startsWith(q) ? 1 : x.id.toLowerCase() === q ? 0 : 2) + (x.k === "piece" ? 0.5 : 0) }))
+    .sort((a, b) => a.sc - b.sc || a.x.n.length - b.x.n.length).slice(0, 14).map(o => o.x);
+  qsel = 0;
+  if (!qlist.length) { qr.innerHTML = `<a><span class="dim">No matches</span></a>`; qr.hidden = false; return; }
+  qr.innerHTML = qlist.map((x, i) => {
+    const ic = x.k === "item" ? itemIcon(x.id, "s") : x.k === "mob" ? mobIcon(x.id, "s") : pieceIcon(x.id, "s");
+    return `<a href="#${x.k}/${encodeURIComponent(x.id)}" class="${i === qsel ? "on" : ""}">${ic}<span class="t${x.ti ?? ""}">${esc(x.n)}</span><span class="mono faint">${esc(x.id)}</span><span class="k">${{ item: "Item", mob: "Creature", piece: "Piece" }[x.k]}</span></a>`;
+  }).join("");
+  qr.hidden = false;
+}
+qi.addEventListener("input", doSearch);
+qi.addEventListener("keydown", e => {
+  const as = qr.querySelectorAll("a[href]");
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault(); if (!as.length) return;
+    qsel = (qsel + (e.key === "ArrowDown" ? 1 : -1) + as.length) % as.length;
+    as.forEach((a, i) => a.classList.toggle("on", i === qsel));
+  } else if (e.key === "Enter") { if (as[qsel]) { location.hash = as[qsel].getAttribute("href"); qr.hidden = true; qi.blur(); } }
+  else if (e.key === "Escape") { qr.hidden = true; }
+});
+qr.addEventListener("click", () => { qr.hidden = true; });
+document.addEventListener("click", e => { if (!e.target.closest(".search")) qr.hidden = true; });
+qi.addEventListener("focus", () => { if (qi.value.trim().length >= 2) doSearch(); });
+
+// ---------------------------------------------------------------- options
+function initOptions() {
+  const dumps = (window.CODEX_DUMPS || ["Vanilla"]);
+  const ds = $("#dump");
+  ds.innerHTML = dumps.map(d => `<option>${esc(d)}</option>`).join("");
+  let want = LS.get("dump", dumps[0]); if (!dumps.includes(want)) want = dumps[0];
+  ds.value = want;
+  ds.onchange = () => { LS.set("dump", ds.value); loadDump(ds.value); };
+  const rs = $("#reach");
+  rs.innerHTML = BIOMES.map(b => `<option value="${b.t}">${esc(b.n)}</option>`).join("");
+  S.reach = LS.get("reach", 7); rs.value = S.reach;
+  rs.onchange = () => { S.reach = +rs.value; LS.set("reach", S.reach); renderBiomeNav(); route(); };
+  S.showUnused = LS.get("unused", false);
+  loadDump(want);
+}
+function renderBiomeNav() {
+  $("#biomenav").innerHTML = BIOMES.filter(b => b.t <= S.reach).map(b => `<a class="t${b.t}" href="#biome/${b.t}" data-n="biome/${b.t}">${esc(b.n)}</a>`).join("");
+}
+function loadDump(name) {
+  window.CODEX_DATA = window.CODEX_DATA || {};
+  const go = () => {
+    D = window.CODEX_DATA[name]; DUMP = name;
+    if (!D) { $("#main").innerHTML = `<div class="note warnnote">Couldn't load <code>data/${esc(name)}.js</code>. Run convert.py on the dump first.</div>`; return; }
+    buildIndexes();
+    const m = D.meta || {};
+    $("#footdata").textContent = `Data: ${m.name || name} dump · Valheim ${m.game || "?"} · ${m.date || ""}`;
+    renderBiomeNav(); route();
+  };
+  if (window.CODEX_DATA[name]) return go();
+  const s = document.createElement("script");
+  s.src = `data/${encodeURIComponent(name)}.js`; s.onload = go;
+  s.onerror = () => { $("#main").innerHTML = `<div class="note warnnote">Couldn't find <code>data/${esc(name)}.js</code>.</div>`; };
+  document.head.appendChild(s);
+}
+
+// ---------------------------------------------------------------- router
+const ROUTES = {};
+function route() {
+  if (!D) return;
+  tip.hidden = true;
+  const h = decodeURIComponent(location.hash.replace(/^#/, "")) || "home";
+  const [page, ...rest] = h.split("/");
+  const arg = rest.join("/");
+  const fn = ROUTES[page] || ROUTES.home;
+  const main = $("#main");
+  try { main.innerHTML = fn(arg); } catch (err) { console.error(err); main.innerHTML = `<div class="note warnnote">Something went wrong showing this page: ${esc(err.message)}</div>`; }
+  document.querySelectorAll(".nav a").forEach(a => a.classList.toggle("on", a.dataset.n === page || a.dataset.n === h));
+  if (ROUTES[page] && ROUTES[page].after) ROUTES[page].after(arg);
+  const title = main.querySelector("h1");
+  document.title = (title && page !== "home" ? title.textContent + " – " : "") + "Valheim Codex";
+  if (!route.keepScroll) window.scrollTo(0, 0);
+  route.keepScroll = false;
+}
+window.addEventListener("hashchange", route);
+
+// ---------------------------------------------------------------- home
+ROUTES.home = function () {
+  const m = D.meta || {};
+  const cards = BIOMES.map(b => {
+    const items = Object.values(D.items).filter(i => i.ti === b.t && !i.uo).length;
+    const mobs = Object.values(D.creatures).filter(c => c.ti === b.t && !c.boss).length;
+    const bosses = Object.entries(D.creatures).filter(([, c]) => isBoss(c) && c.ti === b.t);
+    const locked = b.t > S.reach;
+    return `<a class="bcard t${b.t}${locked ? " locked" : ""}" href="#biome/${b.t}">
+      <div class="exp">${esc(b.exp)}</div><h3>${esc(b.n)}</h3>
+      <div class="cnt">${items} items · ${mobs} creatures</div>
+      ${bosses.map(([id]) => `<div class="boss">${mobIcon(id, "s")}<span>${esc(D.creatures[id].n)}</span></div>`).join("")}
+      ${locked ? `<div class="small">Hidden by "I've reached"</div>` : ""}
+    </a>`;
+  }).join("");
+  const nItems = Object.values(D.items).filter(i => !i.uo).length;
+  return `<div class="banner" style="color:var(--gold)"><div class="exp">Wowhead-style reference</div><h1>Valheim Codex</h1>
+    <div class="txt">Every item, creature, station and building piece, linked together. Each biome is treated like an expansion.
+    Set <b>I've reached</b> at the top to hide spoilers from biomes you haven't been to yet.</div></div>
+    <h2>Expansions</h2><div class="biomegrid">${cards}</div>
+    <h2>This dump</h2>
+    <dl class="kv"><dt>Name</dt><dd>${esc(m.name || DUMP)}</dd><dt>Valheim</dt><dd>${esc(m.game || "?")}</dd><dt>Dumped</dt><dd>${esc(m.date || "?")}</dd>
+    ${m.session ? `<dt>World / server</dt><dd>${esc(m.session.serverName || m.session.world || "")} <span class="faint">(${esc(m.session.mode || "")})</span></dd>` : ""}
+    <dt>Mods</dt><dd>${(m.mods || []).map(x => esc(x.name + " " + x.version)).join(", ") || "none"}</dd>
+    <dt>Contents</dt><dd>${nItems} items · ${Object.keys(D.creatures).length} creatures · ${Object.values(D.pieces).filter(p => p.tool !== "Feaster").length} pieces · ${Object.keys(D.conv).length} production stations</dd></dl>
+    <h2>Tips</h2>
+    <div class="note">Hover any item, creature or piece for a quick tooltip. Click a <code>prefab name</code> or <code>spawn</code> command to copy it. Pages have their own links (for example <code>#item/SwordIron</code>), so you can bookmark them or share them in Discord.</div>`;
+};
+
+// ---------------------------------------------------------------- biome page
+ROUTES.biome = function (arg) {
+  const t = +arg; const b = BIOMES[t];
+  if (!b) return ROUTES.home();
+  const items = Object.entries(D.items).filter(([, i]) => i.ti === t && (S.showUnused || !i.uo));
+  const byCat = c => items.filter(([, i]) => i.c === c).sort((a, z) => a[1].n.localeCompare(z[1].n));
+  const grid = list => list.length ? `<div class="grid sm">${list.map(([id, i]) => `<div class="card row">${itemLink(id, { size: "" })}</div>`).join("")}</div>` : `<p class="empty">Nothing new here.</p>`;
+  const mobsHere = Object.entries(D.creatures).filter(([, c]) => c.ti === t);
+  const bosses = mobsHere.filter(([, c]) => isBoss(c));
+  const minis = mobsHere.filter(([, c]) => !isBoss(c) && (c.mini || c.boss));
+  const regular = mobsHere.filter(([, c]) => !c.boss && !c.mini).sort((a, z) => (z[1].hp || 0) - (a[1].hp || 0));
+  const also = [...(IX.mobsIn[t] || [])].filter(cid => D.creatures[cid].ti !== t && !D.creatures[cid].boss && (D.creatures[cid].ti ?? 0) < t);
+  const mobCard = ([cid, c]) => `<div class="card row">${mobLink(cid, { size: "" })}<span class="sub" style="margin-left:auto">${fmt(c.hp)} HP</span></div>`;
+  // raw materials: has a gather/drop source
+  const mats = byCat("mat").concat(byCat("trophy"));
+  const raw = mats.filter(([id]) => (D.src[id] || []).some(s => ["drop", "pick", "mine", "tree", "break", "chest", "trader"].includes(s.k)) && !D.recipes[id]);
+  const made = mats.filter(x => !raw.includes(x));
+  const stationsAll = Object.entries(D.pieces).filter(([pid, p]) => p.ti === t && p.tool === "Hammer" && (p.cs || D.conv[pid] || p.cat === "Crafting"));
+  const pieceCount = Object.values(D.pieces).filter(p => p.ti === t && p.tool !== "Feaster").length;
+  const trader = [];
+  for (const [tid, tr] of Object.entries(D.traders || {})) for (const [iid, price, stack, req] of tr.stock) {
+    const s = (D.src[iid] || []).find(x => x.k === "trader" && x.id === tid);
+    if (s && s.ti === t) trader.push([tid, iid, price, stack, req]);
+  }
+  const spoiler = t > S.reach ? `<div class="note warnnote">You've set "I've reached" to ${esc(BIOMES[S.reach].n)}. This page is a spoiler.</div>` : "";
+  return `${spoiler}<div class="banner t${t}"><div class="exp">${esc(b.exp)} · Tier ${t}</div><h1>${esc(b.n)}</h1><div class="txt">${esc(b.blurb)}</div></div>
+  ${bosses.length ? `<h2>Boss</h2><div class="grid">${bosses.map(([cid, c]) => `<div class="card row">${mobLink(cid, { size: "l" })}<div class="sub" style="margin-left:auto;text-align:right">${fmt(c.hp)} HP<br>${dmgMods(c.mods)}</div></div>`).join("")}</div>` : ""}
+  <h2>Creatures</h2>${regular.length ? `<div class="grid sm">${regular.map(mobCard).join("")}</div>` : `<p class="empty">None</p>`}
+  ${minis.length ? `<h3>Named & mini-bosses</h3><div class="grid sm">${minis.map(mobCard).join("")}</div>` : ""}
+  ${also.length ? `<h3>Also spawns here</h3><div class="grid sm">${also.map(cid => mobCard([cid, D.creatures[cid]])).join("")}</div>` : ""}
+  <h2>Raw materials & trophies</h2>${grid(raw)}
+  <h2>Refined & crafted materials</h2>${grid(made)}
+  <h2>Weapons</h2>${grid(byCat("weapon"))}
+  <h2>Armor</h2>${grid(byCat("armor"))}
+  ${byCat("shield").length ? `<h2>Shields</h2>${grid(byCat("shield"))}` : ""}
+  ${byCat("ammo").length ? `<h2>Ammo</h2>${grid(byCat("ammo"))}` : ""}
+  ${byCat("tool").length + byCat("trinket").length ? `<h2>Tools, trinkets & utility</h2>${grid(byCat("tool").concat(byCat("trinket")))}` : ""}
+  <h2>Food & meads</h2>${grid(byCat("food").concat(byCat("mead")).concat(byCat("fish")))}
+  ${byCat("misc").length ? `<h2>Misc</h2>${grid(byCat("misc"))}` : ""}
+  <h2>Stations & workbenches</h2>${stationsAll.length ? `<div class="grid sm">${stationsAll.map(([pid]) => `<div class="card row">${pieceLink(pid, { size: "" })}</div>`).join("")}</div>` : `<p class="empty">No new stations.</p>`}
+  <p><a href="#pieces/${t}">All ${pieceCount} building pieces unlocked in ${esc(b.n)} →</a></p>
+  ${trader.length ? `<h2>Trader stock unlocked</h2><div class="tw"><table><tr><th>Item</th><th>Trader</th><th class="n">Price</th><th>Needs</th></tr>${trader.map(([tid, iid, price, stack, req]) => `<tr><td>${itemLink(iid)}${stack > 1 ? ` <span class="faint">×${stack}</span>` : ""}</td><td><a href="#traders">${esc(D.traders[tid].n)}</a></td><td class="n">${price}</td><td class="dim">${esc(req || "–")}</td></tr>`).join("")}</table></div>` : ""}`;
+};
+
+// (lists and detail pages are defined in part 2 below)
+window.__codex = { isBoss, ROUTES, D: () => D, IX, S, BIOMES, BKEY, BKEYNAME, CATS, CATNAME, DTYPES, DNAME, PIECE_CAT, BOSS_NAMES, esc, fmt, pct, tname, tb, visible, secs, itemLink, mobLink, pieceLink, stationLink, costList, cmd, dmgMods, itemIcon, mobIcon, pieceIcon, route, LS, toast };
+window.addEventListener("DOMContentLoaded", () => setTimeout(initOptions, 0));
+})();

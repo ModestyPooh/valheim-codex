@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Valheim Codex</title>
+<link rel="stylesheet" href="codex.css">
+</head>
+<body>
+<header class="top">
+  <div class="bar">
+    <a class="brand" href="#home"><span class="rune">ᚢ</span> Valheim Codex</a>
+    <div class="search">
+      <input id="q" type="search" placeholder="Search items, mobs, pieces, prefab names…" autocomplete="off" spellcheck="false">
+      <div id="qres" class="qres" hidden></div>
+    </div>
+    <div class="opts">
+      <label title="Which data dump to show">Data
+        <select id="dump"></select></label>
+      <label title="Hide everything from biomes you haven't reached yet">I've reached
+        <select id="reach"></select></label>
+    </div>
+  </div>
+  <nav class="nav" id="nav">
+    <a href="#home" data-n="home">Home</a>
+    <a href="#items" data-n="items">Items</a>
+    <a href="#mobs" data-n="mobs">Bestiary</a>
+    <a href="#pieces" data-n="pieces">Building</a>
+    <a href="#stations" data-n="stations">Stations</a>
+    <a href="#traders" data-n="traders">Traders</a>
+    <span class="sep"></span>
+    <span id="biomenav" class="biomenav"></span>
+  </nav>
+</header>
+<main id="main"><p class="loading">Loading data…</p></main>
+<footer class="sig">
+  <img src="logo.webp" alt="ModestyPooh">
+  <div>Made by ModestyPooh · <span id="footdata">Data from CodexDump</span></div>
+  <div class="small">Icons hotlinked from the Jotunn modding docs. Valheim is © Iron Gate AB; this is a fan-made reference.</div>
+</footer>
+<div id="tip" class="tip" hidden></div>
+<div id="toast" class="toast" hidden></div>
+<script src="data/dumps.js"></script>
+<script src="codex.js"></script>
+<script src="codex-pages.js"></script>
+</body>
+</html>
