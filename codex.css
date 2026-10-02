@@ -130,3 +130,19 @@ a.btn:hover{text-decoration:none}
 .tipnote{background:#1f2a1d;border-color:#3d5a36;color:#d6ecc9}
 .disclaimer{max-width:640px;margin:6px auto 0}
 .hiddenmore{font-size:.82rem;color:var(--faint);font-style:italic;padding:4px 0}
+
+/* food combos */
+.combos{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;margin:10px 0}
+.combo{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--cc);border-radius:10px;overflow:hidden}
+.combo .chd{padding:10px 12px 6px;font-family:Georgia,serif;font-size:1.1rem;color:var(--cc);display:flex;flex-direction:column}
+.combo .chd span{font-family:inherit;font-size:.78rem;color:var(--faint);font-family:"Segoe UI",system-ui,sans-serif}
+.combo .cbody{padding:0 12px 12px}
+.ctot{display:flex;gap:12px;font-weight:700;margin:2px 0 6px}
+.ctot .th{color:#ff9a8a}.ctot .ts{color:#ffd66b}.ctot .te{color:#a9a0ff}
+.cfood{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:4px 0;border-bottom:1px dashed #262d36}
+.cf-s{margin-left:auto;color:var(--dim);font-size:.85rem;font-variant-numeric:tabular-nums}
+.cf-a{width:100%;font-size:.8rem;color:var(--faint);padding-left:25px}
+.cgd{font-size:.82rem;color:var(--dim);margin-top:5px}
+.btn.small{font-size:.8rem;padding:3px 8px;margin-top:8px}
+ul.tips{margin:6px 0;padding-left:20px}ul.tips li{margin:4px 0}
+#listcount{color:var(--gold);font-size:.85em}
