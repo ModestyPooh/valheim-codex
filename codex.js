@@ -49,23 +49,28 @@ const secs = s => { if (s == null) return "–"; s = Math.round(s); if (s < 60) 
 const isBoss = c => !!(c && c.f === "Boss" && c.key && /^defeated_/.test(c.key));
 const initials = n => (n || "?").replace(/[^A-Za-z0-9 ]/g, "").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("") || "?";
 
-function iconImg(kind, id, size, name) {
-  const cls = "ic" + (size ? " " + size : "");
+// Wowhead-style icon frame: a dark square with a border (biome-coloured when known); the art is scaled up
+// a little because the Jotunn pictures have empty space around them.
+function frame(size, tier, inner) {
+  return `<span class="icf${size ? " " + size : ""}${tier != null ? " fb" + tier : ""}">${inner}</span>`;
+}
+function iconImg(kind, id, size, name, tier) {
   const src = kind === "piece" ? ICON_PIECE(id) : ICON_ITEM(id);
-  return `<img class="${cls}" loading="lazy" src="${src}" alt="" data-ph="${esc(initials(name))}" data-sz="${size || ""}" onerror="codexIconFail(this)">`;
+  return frame(size, tier, `<img loading="lazy" src="${src}" alt="" data-ph="${esc(initials(name))}" onerror="codexIconFail(this)">`);
 }
 window.codexIconFail = function (img) {
   const s = document.createElement("span");
-  s.className = "ph" + (img.dataset.sz ? " " + img.dataset.sz : ""); s.textContent = img.dataset.ph || "?";
+  s.className = "phi"; s.textContent = img.dataset.ph || "?";
   img.replaceWith(s);
 };
-function itemIcon(id, size) { const it = D.items[id]; return iconImg("item", id, size, it ? it.n : id); }
+function itemIcon(id, size) { const it = D.items[id]; return iconImg("item", id, size, it ? it.n : id, it ? it.ti : null); }
 function mobIcon(cid, size) {
+  const c = D.creatures[cid];
   const tr = IX.trophyOf[cid];
-  if (tr) return iconImg("item", tr, size, D.creatures[cid].n);
-  return `<span class="ph${size ? " " + size : ""}">${esc(initials(D.creatures[cid] ? D.creatures[cid].n : cid))}</span>`;
+  if (tr) return iconImg("item", tr, size, c.n, c ? c.ti : null);
+  return frame(size, c ? c.ti : null, `<span class="phi">${esc(initials(c ? c.n : cid))}</span>`);
 }
-function pieceIcon(pid, size) { const p = D.pieces[pid]; return iconImg("piece", pid, size, p ? p.n : pid); }
+function pieceIcon(pid, size) { const p = D.pieces[pid]; return iconImg("piece", pid, size, p ? p.n : pid, p ? p.ti : null); }
 
 function itemLink(id, opts) {
   opts = opts || {};
