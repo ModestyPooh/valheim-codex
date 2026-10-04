@@ -4,14 +4,14 @@
 
 // ---------------------------------------------------------------- constants
 const BIOMES = [
-  { t: 0, n: "Meadows", keys: ["Meadows"], exp: "The Beginning", blurb: "Gentle fields and forests where every viking starts." },
-  { t: 1, n: "Black Forest", keys: ["BlackForest"], exp: "Expansion I", blurb: "Dark woods with copper, tin, trolls and burial chambers." },
-  { t: 2, n: "Swamp & Ocean", keys: ["Swamp", "Ocean"], exp: "Expansion II", blurb: "Iron in the sunken crypts, serpents out at sea." },
-  { t: 3, n: "Mountains", keys: ["Mountain"], exp: "Expansion III", blurb: "Silver, wolves and drakes. Bring frost resistance." },
-  { t: 4, n: "Plains", keys: ["Plains"], exp: "Expansion IV", blurb: "Fulings, lox, barley and black metal." },
-  { t: 5, n: "Mistlands", keys: ["Mistlands"], exp: "Expansion V", blurb: "Dvergr, seekers and eitr in the mist." },
-  { t: 6, n: "Ashlands", keys: ["AshLands"], exp: "Expansion VI", blurb: "Fire, flametal and the Charred army." },
-  { t: 7, n: "Deep North", keys: ["DeepNorth"], exp: "Expansion VII", blurb: "Frozen halls, bloodgold and the Nord forges." },
+  { t: 0, n: "Meadows", keys: ["Meadows"], exp: "Biome 1 · Original game", blurb: "Gentle fields and forests where every viking starts." },
+  { t: 1, n: "Black Forest", keys: ["BlackForest"], exp: "Biome 2 · Original game", blurb: "Dark woods with copper, tin, trolls and burial chambers." },
+  { t: 2, n: "Swamp & Ocean", keys: ["Swamp", "Ocean"], exp: "Biome 3 · Original game", blurb: "Iron in the sunken crypts, serpents out at sea." },
+  { t: 3, n: "Mountains", keys: ["Mountain"], exp: "Biome 4 · Original game", blurb: "Silver, wolves and drakes. Bring frost resistance." },
+  { t: 4, n: "Plains", keys: ["Plains"], exp: "Biome 5 · Original game", blurb: "Fulings, lox, barley and black metal." },
+  { t: 5, n: "Mistlands", keys: ["Mistlands"], exp: "Biome 6 · Mistlands update", blurb: "Dvergr, seekers and eitr in the mist." },
+  { t: 6, n: "Ashlands", keys: ["AshLands"], exp: "Biome 7 · Ashlands update", blurb: "Fire, flametal and the Charred army." },
+  { t: 7, n: "Deep North", keys: ["DeepNorth"], exp: "Biome 8 · Full release (1.0)", blurb: "Frozen halls, bloodgold and the Nord forges." },
 ];
 const BKEY = { Meadows: 0, BlackForest: 1, Swamp: 2, Ocean: 2, Mountain: 3, Plains: 4, Mistlands: 5, AshLands: 6, DeepNorth: 7 };
 const BKEYNAME = { Meadows: "Meadows", BlackForest: "Black Forest", Swamp: "Swamp", Ocean: "Ocean", Mountain: "Mountains", Plains: "Plains", Mistlands: "Mistlands", AshLands: "Ashlands", DeepNorth: "Deep North" };
@@ -35,7 +35,7 @@ const LS = {
   set(k, v) { try { localStorage.setItem("vcodex." + k, JSON.stringify(v)); } catch (e) { } },
 };
 const IX = {}; // indexes built per dump
-const DATA_VERSION = "5"; // bump when data/Vanilla.js changes so browsers fetch the new file
+const DATA_VERSION = "8"; // bump when data/Vanilla.js changes so browsers fetch the new file
 
 // ---------------------------------------------------------------- helpers
 const $ = s => document.querySelector(s);
@@ -317,10 +317,10 @@ ROUTES.home = function () {
   }).join("");
   const nItems = Object.values(D.items).filter(i => !i.uo).length;
   return `<div class="banner" style="color:var(--gold)"><div class="exp">Vanilla Valheim reference</div><h1>Valheim Codex</h1>
-    <div class="txt">Every item, creature, station and building piece, linked together. Each biome is treated like an expansion.
+    <div class="txt">Every item, creature, station and building piece, linked together. Each biome has its own page with its boss, creatures, materials and gear.
     Set <b>I've reached</b> at the top to hide spoilers from biomes you haven't been to yet.</div></div>
-    <h2>Expansions</h2><div class="biomegrid">${cards}</div>
-    ${hiddenCount ? `<p class="small">${hiddenCount} later expansion${hiddenCount > 1 ? "s are" : " is"} hidden by your "I've reached" setting.</p>` : ""}
+    <h2>Biomes</h2><div class="biomegrid">${cards}</div>
+    ${hiddenCount ? `<p class="small">${hiddenCount} later biome${hiddenCount > 1 ? "s are" : " is"} hidden by your "I've reached" setting.</p>` : ""}
     <h2>About the data</h2>
     <dl class="kv"><dt>Valheim</dt><dd>${esc(m.game || "?")}</dd><dt>Updated</dt><dd>${esc(m.date || "?")}</dd>
     <dt>Contents</dt><dd>${nItems} items · ${Object.keys(D.creatures).length} creatures · ${Object.values(D.pieces).filter(p => p.tool !== "Feaster").length} pieces · ${Object.keys(D.conv).length} production stations</dd></dl>
@@ -353,7 +353,7 @@ ROUTES.biome = function (arg) {
     if (s && s.ti === t) trader.push([tid, iid, price, stack, req]);
   }
   const spoiler = "";
-  return `${spoiler}<div class="banner t${t}"><div class="exp">${esc(b.exp)} · Tier ${t}</div><h1>${esc(b.n)}</h1><div class="txt">${esc(b.blurb)}</div></div>${noteBox("biome/" + t)}
+  return `${spoiler}<div class="banner t${t}"><div class="exp">${esc(b.exp)}</div><h1>${esc(b.n)}</h1><div class="txt">${esc(b.blurb)}</div></div>${noteBox("biome/" + t)}
   ${bosses.length ? `<h2>Boss</h2><div class="grid">${bosses.map(([cid, c]) => `<div class="card row">${mobLink(cid, { size: "l" })}<div class="sub" style="margin-left:auto;text-align:right">${fmt(c.hp)} HP<br>${dmgMods(c.mods)}</div></div>`).join("")}</div>` : ""}
   <h2>Creatures</h2>${regular.length ? `<div class="grid sm">${regular.map(mobCard).join("")}</div>` : `<p class="empty">None</p>`}
   ${minis.length ? `<h3>Named & mini-bosses</h3><div class="grid sm">${minis.map(mobCard).join("")}</div>` : ""}

@@ -97,11 +97,14 @@ ROUTES.food = function () {
     if (c.missing) { h += `<p class="small">Needs an ${SLOTLABEL[c.missing]}: eitr foods start in the <b>Mistlands</b>.</p></div></div>`; continue; }
     const tot = c.picks.reduce((a, p) => ({ hp: a.hp + p.food.hp, st: a.st + p.food.st, ei: a.ei + p.food.ei }), { hp: 0, st: 0, ei: 0 });
     const minDur = Math.min(...c.picks.map(p => p.food.dur));
-    h += `<div class="ctot"><span class="th">❤ ${tot.hp}</span><span class="ts">⚡ ${tot.st}</span><span class="te">✦ ${tot.ei}</span></div>`;
-    h += c.picks.map(p => `<div class="cfood">${foodLink(p.food)}<span class="cf-s">${p.food.hp} / ${p.food.st}${p.food.ei ? " / " + p.food.ei : ""}</span>${p.alt ? `<span class="cf-a">or ${itemLink(p.alt.id)}</span>` : ""}</div>`).join("");
-    h += `<div class="small" style="margin-top:6px">Shortest lasts ${minDur} min · health / stamina / eitr</div>
+    const vals = f => `<span class="v hp">${f.hp || ""}</span><span class="v st">${f.st || ""}</span><span class="v ei">${f.ei || ""}</span>`;
+    h += `<div class="crow chead"><span></span><span class="v hp" title="Health">❤</span><span class="v st" title="Stamina">⚡</span><span class="v ei" title="Eitr">✦</span></div>`;
+    h += c.picks.map(p => `<div class="crow cmain"><span class="cn">${foodLink(p.food)}</span>${vals(p.food)}</div>` +
+      (p.alt ? `<div class="crow calt"><span class="cn"><span class="or">or</span>${itemLink(p.alt.id)}</span>${vals(p.alt)}</div>` : `<div class="crow calt"><span class="cn"><span class="or faint">no alternative</span></span></div>`)).join("");
+    h += `<div class="crow ctotal"><span class="cn">Total</span><span class="v hp">${tot.hp}</span><span class="v st">${tot.st}</span><span class="v ei">${tot.ei || ""}</span></div>`;
+    h += `<div class="cfoot"><div class="small">Shortest lasts ${minDur} min</div>
       <div class="cgd"><b>Good for:</b> ${st.good.map(esc).join("; ")}.</div><div class="cgd"><b>Downsides:</b> ${st.down.map(esc).join("; ")}.</div>
-      <button class="btn small" data-addcombo="${c.picks.map(p => p.food.id).join(",")}" title="Add these 3 to your shopping list">+ Shopping list</button></div></div>`;
+      <button class="btn small" data-addcombo="${c.picks.map(p => p.food.id).join(",")}" title="Add these 3 to your shopping list">+ Shopping list</button></div></div></div>`;
   }
   h += `</div><p class="small">Stamina and eitr totals add to your base 50 stamina and 0 eitr.</p>`;
   // all foods table
@@ -255,9 +258,19 @@ ROUTES.place = function (pid) {
   return `<div class="banner t${p.tier}"><div class="exp">${esc(p.type || "Place")} · ${esc(BIOMES[p.tier].n)}</div><h1>${esc(p.name)}</h1><div class="txt">${esc(p.text || "")}</div></div>
     ${noteBox("place/" + pid)}
     ${(p.tips || []).length ? `<h2>Tips</h2><ul class="tips">${p.tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
+    ${(p.mobs || []).length ? `<h2>Creatures</h2><div class="grid sm">${p.mobs.filter(m => D.creatures[m]).map(m => `<div class="card row">${mobLink(m, { size: "" })}</div>`).join("")}</div>` : ""}
     ${(p.items || []).length ? `<h2>Found here</h2><div class="grid sm">${p.items.filter(i => D.items[i]).map(i => `<div class="card row">${itemLink(i, { size: "" })}</div>`).join("")}</div>` : ""}
-    ${(p.mobs || []).length ? `<h2>Creatures</h2><div class="grid sm">${p.mobs.filter(m => D.creatures[m]).map(m => `<div class="card row">${mobLink(m, { size: "" })}</div>`).join("")}</div>` : ""}`;
+    ${(p.chests || []).map(chestTable).join("")}`;
 };
+function chestTable(c) {
+  const rolls = c.rolls && c.rolls[0] != null ? (c.rolls[0] === c.rolls[1] ? c.rolls[0] : c.rolls[0] + "–" + c.rolls[1]) : "?";
+  const rows = c.loot.filter(([i]) => visible((D.items[i] || {}).ti));
+  const hidden = c.loot.length - rows.length;
+  return `<h2>${esc(c.n)} <span class="small">${esc(rolls)} items per chest · <code>${esc(c.id)}</code></span></h2>
+    <div class="tw"><table><tr><th>Item</th><th class="n">Amount</th><th class="n">Chance per item</th></tr>
+    ${rows.map(([i, a, b, w]) => `<tr><td>${itemLink(i)}</td><td class="n">${a === b || b == null ? a : a + "–" + b}</td><td class="n">${Math.round(w * 1000) / 10}%</td></tr>`).join("")}</table></div>
+    ${hidden ? `<div class="hiddenmore">+ ${hidden} more from biomes you haven't reached yet</div>` : ""}`;
+}
 ROUTES.place.tierOf = pid => { fresh(); const p = (D.places || {})[pid]; return p ? p.tier : null; };
 
 // biome pages get a Places section
@@ -287,6 +300,95 @@ ROUTES.mobs = function (arg) {
   return h.replace(/(<h1>Bestiary<\/h1>)/, "$1" + box);
 };
 ROUTES.mobs.after = mobsRoute.after;
+
+// ================================================================= BOSS SUMMONING (on creature pages)
+const mobRoute = ROUTES.mob;
+ROUTES.mob = function (cid) {
+  let h = mobRoute(cid);
+  fresh();
+  const b = (D.bosses || {})[cid];
+  if (!b) return h;
+  const box = `<h2>How to summon</h2><div class="card summon"><dl class="kv">
+    <dt>Altar</dt><dd><b>${esc(b.altar)}</b></dd>
+    <dt>${b.note ? "Needs" : "Offer"}</dt><dd><div class="cost">${(b.offer || []).map(([i, n]) => itemLink(i, { size: "", n })).join("")}</div></dd>
+    <dt>Where</dt><dd>${esc(b.where)}</dd>${b.note ? `<dt></dt><dd class="dim">${esc(b.note)}</dd>` : ""}</dl></div>`;
+  return h.replace(/(<div class="cols"><div><h2>Combat<\/h2>)/, box + "$1");
+};
+ROUTES.mob.tierOf = mobRoute.tierOf;
+ROUTES.mob.after = mobRoute.after;
+
+// old links to the craftable half of a feast go to the feast itself
+const itemRoute2 = ROUTES.item;
+ROUTES.item = function (id) {
+  fresh();
+  if (!D.items[id] && /_Material$/.test(id) && D.items[id.replace(/_Material$/, "")]) { setTimeout(() => location.replace("#item/" + id.replace(/_Material$/, "")), 0); return ""; }
+  return itemRoute2(id);
+};
+ROUTES.item.tierOf = itemRoute2.tierOf; ROUTES.item.after = itemRoute2.after;
+
+// ================================================================= COMFORT
+const CF = { tier: null, season: true };
+function comfortPieces() {
+  return Object.entries(D.pieces).filter(([, p]) => p.cf && p.cf[0] > 0 && p.tool === "Hammer").map(([id, p]) => ({ id, p, v: p.cf[0], g: (p.cf[1] && p.cf[1] !== "None") ? p.cf[1] : null, t: p.ti ?? 0 }));
+}
+function bestComfort(t, withSeason) {
+  const best = {};
+  for (const x of comfortPieces()) {
+    if (x.t > t || (x.p.sea && !withSeason)) continue;
+    const key = x.g || ("solo:" + x.id);
+    if (!best[key] || x.v > best[key].v || (x.v === best[key].v && !x.p.sea && best[key].p.sea)) best[key] = x;
+  }
+  return best;
+}
+ROUTES.comfort = function () {
+  fresh();
+  const t = Math.min(CF.tier == null ? S.reach : CF.tier, S.reach);
+  const best = bestComfort(t, CF.season);
+  const rows = Object.entries(best).sort((a, b) => b[1].v - a[1].v || a[0].localeCompare(b[0]));
+  const total = rows.reduce((a, [, x]) => a + x.v, 0);
+  const totalNoSeason = Object.values(bestComfort(t, false)).reduce((a, x) => a + x.v, 0);
+  // what improves in the next biome
+  const next = t < 7 ? bestComfort(t + 1, CF.season) : null;
+  const ups = next ? Object.entries(next).filter(([k, x]) => !best[k] || x.v > best[k].v) : [];
+  const all = comfortPieces().filter(x => visible(x.t)).sort((a, b) => (a.g || "~").localeCompare(b.g || "~") || b.v - a.v || a.t - b.t);
+  const groups = {};
+  all.forEach(x => (groups[x.g || "Counts on its own"] = groups[x.g || "Counts on its own"] || []).push(x));
+  return `<h1>Comfort planner</h1>
+    <div class="note">Comfort makes your Rested buff last longer. Only the <b>best piece in each group</b> counts (one bed, one chair, one fire…), so building two chairs doesn't help. Pieces marked "counts on its own" add their comfort separately. All of this is on top of the base comfort you always get.</div>
+    <div class="chips" id="cftier">${BIOMES.filter(b => b.t <= S.reach).map(b => `<span class="chip t${b.t}${b.t === t ? " on" : ""}" data-cft="${b.t}">${esc(b.n)}</span>`).join("")}</div>
+    <label class="toggle"><input type="checkbox" id="cfsea"${CF.season ? " checked" : ""}> Include seasonal pieces (Yule, Midsummer, Halloween)</label>
+    <h2>Best comfort by ${esc(BIOMES[t].n)}: <span style="color:var(--gold)">+${total}</span>${CF.season && total !== totalNoSeason ? ` <span class="small">(+${totalNoSeason} without seasonal pieces)</span>` : ""}</h2>
+    <div class="tw"><table><tr><th>Group</th><th>Best piece</th><th class="n">Comfort</th><th>Cost</th></tr>
+    ${rows.map(([k, x]) => `<tr><td class="dim">${esc(x.g || "Counts on its own")}</td><td>${pieceLink(x.id, { size: "" })}${x.p.sea ? ` <span class="tag sea">${esc(x.p.sea)}</span>` : ""}</td><td class="n"><b>+${x.v}</b></td><td>${costList(x.p.res)}</td></tr>`).join("")}</table></div>
+    ${ups.length ? `<h3>Coming in ${esc(BIOMES[t + 1].n)}</h3><div class="src">${ups.map(([k, x]) => `<div class="r">${pieceLink(x.id)} <span class="dim">${esc(x.g || "own")}: +${x.v}${best[k] ? ` (instead of +${best[k].v})` : " (new)"}</span></div>`).join("")}</div>` : ""}
+    <h2>All comfort pieces</h2>
+    ${Object.entries(groups).map(([g, list]) => `<h3>${esc(g)}</h3><div class="tw"><table><tr><th>Piece</th><th>Biome</th><th class="n">Comfort</th><th>Cost</th></tr>
+      ${list.map(x => `<tr><td>${pieceLink(x.id)}${x.p.sea ? ` <span class="tag sea">${esc(x.p.sea)}</span>` : ""}</td><td>${tb(x.p.ti)}</td><td class="n">+${x.v}</td><td>${costList(x.p.res)}</td></tr>`).join("")}</table></div>`).join("")}`;
+};
+ROUTES.comfort.after = function () {
+  document.querySelectorAll("[data-cft]").forEach(c => c.onclick = () => { CF.tier = +c.dataset.cft; X.route.keepScroll = true; X.route(); });
+  const cb = document.getElementById("cfsea"); if (cb) cb.onchange = () => { CF.season = cb.checked; X.route.keepScroll = true; X.route(); };
+};
+
+// ================================================================= SEASONAL
+const SEASONS = [["Yule", "Around Christmas and the new year."], ["Midsummer", "Around the summer solstice in June."], ["Halloween", "Around Halloween in October."]];
+ROUTES.seasonal = function () {
+  fresh();
+  const sea = D.seasonal || {};
+  let h = `<h1>Seasonal items</h1><div class="note">These pieces and items belong to Valheim's seasonal events. The building pieces only appear in the Hammer menu while their event is running.</div>`;
+  for (const [ev, when] of SEASONS) {
+    const ids = Object.keys(sea).filter(k => sea[k] === ev);
+    if (!ids.length) continue;
+    const pcs = ids.filter(k => D.pieces[k]), its = ids.filter(k => D.items[k]);
+    h += `<h2>${esc(ev)} <span class="small">${esc(when)}</span></h2>`;
+    if (pcs.length) h += `<div class="tw"><table><tr><th>Piece</th><th class="n">Comfort</th><th>Cost</th></tr>${pcs.map(k => { const p = D.pieces[k];
+      return `<tr><td>${pieceLink(k, { size: "" })}</td><td class="n">${p.cf ? `+${p.cf[0]} <span class="faint">${esc(p.cf[1] && p.cf[1] !== "None" ? p.cf[1] : "own")}</span>` : ""}</td><td>${costList(p.res)}</td></tr>`; }).join("")}</table></div>`;
+    if (its.length) h += `<h3>Items</h3><div class="grid sm">${its.map(k => `<div class="card row">${itemLink(k, { size: "" })}</div>`).join("")}</div>`;
+  }
+  const anytime = ["Sparkler", "FireworksRocket_White"].filter(k => D.items[k]);
+  if (anytime.length) h += `<h2>Any time</h2><p class="dim">Party items you can get all year from Hildir.</p><div class="grid sm">${anytime.map(k => `<div class="card row">${itemLink(k, { size: "" })}</div>`).join("")}</div>`;
+  return h;
+};
 
 window.addEventListener("DOMContentLoaded", () => setTimeout(updateCount, 0));
 })();

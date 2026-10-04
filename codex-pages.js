@@ -272,7 +272,7 @@ ROUTES.mob = function (cid) {
   const mult = Math.pow(2, stars);
   const spoiler = !visible(c.ti) ? `<div class="note warnnote">Spoiler: this creature is from ${esc(tname(c.ti))}.</div>` : "";
   let h = `${spoiler}<div class="dh">${mobIcon(cid, "l")}<div class="ttl"><h1 style="${c.mini ? "color:var(--orange)" : ""}">${esc(c.n)}</h1>
-    <div class="meta">${tb(c.ti)}${boss ? `<span class="tag boss">Boss</span>` : c.mini || c.boss ? `<span class="tag mini">Named</span>` : ""}<span class="tag">${esc(c.fl || c.f || "")}</span></div>
+    <div class="meta">${tb(c.ti)}${boss ? `<span class="tag boss">Boss</span>` : c.mini || c.boss ? `<span class="tag mini">Named</span>` : ""}${boss && (c.fl || c.f) === "Boss" ? "" : `<span class="tag">${esc(c.fl || c.f || "")}</span>`}</div>
     <div class="cmd"><span class="small">Prefab</span> ${cmd(cid)} <span class="small">Spawn</span> ${cmd(`spawn ${cid} 1 ${stars + 1}`)}</div></div></div>`;
   if (!boss) h += `<div style="margin:10px 0"><span class="small">Stars:</span> <span class="stars">${[0, 1, 2].map(s => `<span class="chip${s === stars ? " on" : ""}" data-star="${s}">${s ? "★".repeat(s) : "0"}</span>`).join("")}</span></div>`;
   const hp = c.hp * (stars + 1);
@@ -378,7 +378,7 @@ ROUTES.piece = function (pid) {
   if (!p && !cv) return `<div class="note warnnote">No piece called <code>${esc(pid)}</code>.</div>`;
   const P = p || { n: cv.n };
   let h = `<div class="dh">${pieceIcon(pid, "l")}<div class="ttl"><h1 class="t${P.ti ?? ""}">${esc(P.n)}</h1>
-    <div class="meta">${tb(P.ti)}${P.cat ? `<span class="tag">${esc(PIECE_CAT[P.cat] || P.cat)}</span>` : ""}${P.tool ? `<span class="tag">${esc(P.tool)}</span>` : ""}</div>
+    <div class="meta">${tb(P.ti)}${P.sea ? `<a class="tag sea" href="#seasonal">${esc(P.sea)} event only</a>` : ""}${P.cat ? `<span class="tag">${esc(PIECE_CAT[P.cat] || P.cat)}</span>` : ""}${P.tool ? `<span class="tag">${esc(P.tool)}</span>` : ""}</div>
     ${P.d ? `<div class="desc">${esc(P.d)}</div>` : ""}<div class="cmd"><span class="small">Prefab</span> ${cmd(pid)}</div></div></div>`;
   h += noteBox("piece/" + pid);
   h += `<div class="cols"><div><h2>Build</h2><dl class="kv"><dt>Cost</dt><dd>${costList(P.res)}</dd><dt>Needs</dt><dd>${stationLink(P.st)}</dd>

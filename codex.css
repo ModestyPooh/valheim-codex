@@ -132,7 +132,7 @@ a.btn:hover{text-decoration:none}
 .hiddenmore{font-size:.82rem;color:var(--faint);font-style:italic;padding:4px 0}
 
 /* food combos */
-.combos{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;margin:10px 0}
+.combos{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;margin:10px 0}
 .combo{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--cc);border-radius:10px;overflow:hidden}
 .combo .chd{padding:10px 12px 6px;font-family:Georgia,serif;font-size:1.1rem;color:var(--cc);display:flex;flex-direction:column}
 .combo .chd span{font-family:inherit;font-size:.78rem;color:var(--faint);font-family:"Segoe UI",system-ui,sans-serif}
@@ -160,3 +160,27 @@ ul.tips{margin:6px 0;padding-left:20px}ul.tips li{margin:4px 0}
 .icf.fb0{border-color:#5f8a45}.icf.fb1{border-color:#3f7a47}.icf.fb2{border-color:#7a7344}.icf.fb3{border-color:#8f9db0}
 .icf.fb4{border-color:#a8954a}.icf.fb5{border-color:#7a66a8}.icf.fb6{border-color:#b0502f}.icf.fb7{border-color:#5aa0bd}
 .il{gap:8px}
+
+/* food cards v2: aligned columns */
+.combo{display:flex;flex-direction:column}
+.combo .cbody{flex:1;display:flex;flex-direction:column}
+.crow{display:grid;grid-template-columns:minmax(0,1fr) 38px 38px 38px;align-items:center;column-gap:4px}
+.crow .v{text-align:right;font-variant-numeric:tabular-nums;font-size:.9rem}
+.crow .v.hp{color:#ff9a8a}.crow .v.st{color:#ffd66b}.crow .v.ei{color:#a9a0ff}
+.crow .cn{min-width:0}
+.chead{font-size:.8rem;padding-bottom:2px;border-bottom:1px solid var(--line)}
+.cmain{padding-top:7px}
+.cmain .cn .il{font-size:.98rem}
+.calt{padding:2px 0 7px 0;border-bottom:1px dashed #262d36}
+.calt .cn{display:flex;align-items:center;gap:6px;padding-left:12px;font-size:.84rem}
+.calt .or{color:var(--faint);font-size:.78rem;width:16px;flex:none}
+.calt .v{font-size:.78rem;opacity:.65}
+.ctotal{padding-top:7px;font-weight:700}
+.ctotal .cn{color:var(--dim);font-weight:600;font-size:.85rem}
+.ctotal .v{font-size:1rem}
+.cfoot{padding-top:10px;flex:1;display:flex;flex-direction:column}
+.cfoot .btn{margin-top:auto;align-self:flex-start}
+.cfoot .cgd:last-of-type{margin-bottom:10px}
+
+.tag.sea{background:#3a2a4d;color:#d9c2ff}
+.card.summon{border-left:4px solid var(--gold)}
