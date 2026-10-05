@@ -319,7 +319,7 @@ ROUTES.home = function () {
   }).join("");
   const nItems = Object.values(D.items).filter(i => !i.uo).length;
   const ev = activeSeason();
-  return `<div class="banner" style="color:${ev ? SEASON_INFO[ev].color : "var(--gold)"}"><div class="exp">Valheim reference</div><h1>Valheim Codex</h1>
+  return `<div class="banner" style="color:var(--gold)"><div class="exp">Valheim reference</div><h1>Valheim Codex</h1>
     <div class="txt">Every item, creature, station and building piece, linked together. Each biome has its own page with its boss, creatures, materials and gear.
     Set <b>I've reached</b> at the top to hide spoilers from biomes you haven't been to yet.</div></div>
     ${ev ? seasonStrip(ev) : ""}
@@ -385,7 +385,7 @@ ROUTES.biome.tierOf = arg => (BIOMES[+arg] ? +arg : null);
 const SEASON_INFO = {
   Yule: { from: [12, 1], to: [1, 6], dates: "Dec 1 – Jan 6", blurb: "Christmas and the new year", color: "#e5524e" },
   Midsummer: { from: [6, 1], to: [7, 6], dates: "Jun 1 – Jul 6", blurb: "around the summer solstice", color: "#9fd65a" },
-  Halloween: { from: [10, 1], to: [11, 6], dates: "Oct 1 – Nov 6", blurb: "around Halloween", color: "#ff8a3d" },
+  Halloween: { from: [10, 1], to: [11, 6], dates: "Oct 1 – Nov 6", blurb: "around Halloween", color: "#ff8a3d", art: "season/halloween" },
 };
 function seasonActive(ev, d) {
   const s = SEASON_INFO[ev]; if (!s) return false;
@@ -409,12 +409,19 @@ function seasonDaysLeft(ev, d) {
 }
 function seasonStrip(ev) {
   const s = SEASON_INFO[ev], left = seasonDaysLeft(ev);
-  const ids = Object.entries(D.seasonal || {}).filter(([, e]) => e === ev).map(([id]) => id);
-  const links = ids.map(id => D.pieces[id] ? pieceLink(id) : D.items[id] ? itemLink(id) : "").join("");
-  return `<div class="evstrip" style="--ev:${s.color}"><div class="evhead"><span class="evname">${esc(ev)} is on in Valheim</span>
-    <span class="small">${esc(s.dates)} · ${left === 0 ? "last day!" : left === 1 ? "1 day left" : left + " days left"}</span></div>
-    <div class="small">These can only be built or crafted while the event runs. What you make stays after it ends, but a destroyed piece can't be rebuilt until the event comes back.</div>
-    ${links ? `<div class="cost">${links}</div>` : ""}<a class="small" href="#seasonal">All seasonal pieces and items</a></div>`;
+  const ids = Object.entries(D.seasonal || {}).filter(([, e]) => e === ev).map(([id]) => id).filter(id => D.pieces[id] || D.items[id]);
+  const when = `${esc(s.dates)} · ${left === 0 ? "last day!" : left === 1 ? "1 day left" : left + " days left"}`;
+  const note = "These can only be built or crafted while the event runs. What you make stays after it ends, but a destroyed piece can't be rebuilt until the event comes back.";
+  if (!s.art) { // plain strip for events without artwork yet
+    const links = ids.map(id => D.pieces[id] ? pieceLink(id) : itemLink(id)).join("");
+    return `<div class="evstrip" style="--ev:${s.color}"><div class="evhead"><span class="evname">${esc(ev)} is on in Valheim</span><span class="small">${when}</span></div>
+      <div class="small">${note}</div>${links ? `<div class="cost">${links}</div>` : ""}<a class="small" href="#seasonal">All seasonal pieces and items</a></div>`;
+  }
+  const tiles = ids.map(id => { const pc = !!D.pieces[id], o = pc ? D.pieces[id] : D.items[id];
+    return `<a class="evtile" href="#${pc ? "piece" : "item"}/${encodeURIComponent(id)}" data-tip="${pc ? "piece" : "item"}:${esc(id)}">${pc ? pieceIcon(id, "m") : itemIcon(id, "m")}<span>${esc(o.n)}</span></a>`; }).join("");
+  return `<div class="evban" style="--ev:${s.color};--evl:url('${s.art}-left.webp');--evr:url('${s.art}-right.webp')">
+    <div class="evtext"><div class="evtitle">${esc(ev)} is on in Valheim</div><div class="evwhen">${when}</div><div class="evnote">${note}</div></div>
+    <div class="evunl"><div class="evlbl">Seasonal unlocks</div><div class="evtiles">${tiles}</div><a class="evall" href="#seasonal">All seasonal pieces and items →</a></div></div>`;
 }
 // notes from corrections.json, keyed like "item/OnionSeeds", "mob/Troll", "biome/3"
 function noteBox(key) {

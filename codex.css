@@ -193,3 +193,26 @@ a.tag.sea:hover{text-decoration:none;filter:brightness(1.2)}
 .evstrip .evname{color:var(--ev);font-weight:700;font-size:1.15rem}
 .evstrip .cost{margin:8px 0 4px}
 .evstrip a.small{color:var(--ev)}
+.evban{position:relative;display:flex;align-items:center;gap:20px 28px;margin:10px 0 4px;min-height:176px;padding:16px 25% 16px 30%;
+  border:1px solid color-mix(in srgb,var(--ev) 70%,transparent);border-radius:12px;overflow:hidden;
+  background:var(--evl) left center/auto 100% no-repeat,var(--evr) right center/auto 100% no-repeat,#030b10;
+  box-shadow:0 0 18px color-mix(in srgb,var(--ev) 22%,transparent)}
+.evban .evtext{flex:1 1 320px;padding-left:22px;border-left:2px solid color-mix(in srgb,var(--ev) 75%,transparent);position:relative}
+.evban .evtext::before{content:"ᛉ";position:absolute;left:-8px;top:50%;transform:translateY(-50%);color:var(--ev);background:#030b10;font-size:.9rem;line-height:1.2;padding:2px 0}
+.evban .evtitle{font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:1.5rem;color:var(--ev);line-height:1.15}
+.evban .evwhen{color:#c8cfd8;margin:2px 0 6px}
+.evban .evnote{color:#aeb7c2;font-size:.86rem;line-height:1.4;max-width:46ch}
+.evban .evunl{flex:none;padding-left:24px;border-left:1px solid rgba(255,255,255,.12)}
+.evban .evlbl{font-size:.72rem;letter-spacing:1.6px;text-transform:uppercase;color:#9aa4b0;margin-bottom:8px}
+.evban .evtiles{display:flex;gap:14px}
+.evban .evtile{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:78px;white-space:nowrap;text-align:center;font-size:.82rem;color:#8fb8ff}
+.evban .evtile .icf{background:rgba(10,14,20,.75)}
+.evban .evall{display:inline-block;margin-top:10px;color:var(--ev);font-size:.86rem}
+@media (max-width:1260px){.evban{padding-left:21%;padding-right:10%;
+  background:linear-gradient(90deg,transparent 12%,rgba(3,11,16,.92) 24%,rgba(3,11,16,.92) 76%,transparent 92%),var(--evl) left center/auto 100% no-repeat,var(--evr) right center/auto 100% no-repeat,#030b10}}
+@media (max-width:860px){
+  .evban{flex-direction:column;align-items:flex-start;padding:16px;min-height:0;
+    background:linear-gradient(rgba(3,11,16,.72),rgba(3,11,16,.88)),var(--evl) left center/auto 100% no-repeat,var(--evr) right center/auto 100% no-repeat,#030b10}
+  .evban .evunl{padding-left:0;border-left:0}
+  .evban .evtext{flex:none}
+}
