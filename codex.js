@@ -35,7 +35,7 @@ const LS = {
   set(k, v) { try { localStorage.setItem("vcodex." + k, JSON.stringify(v)); } catch (e) { } },
 };
 const IX = {}; // indexes built per dump
-const DATA_VERSION = "9"; // bump when data/Vanilla.js changes so browsers fetch the new file
+const DATA_VERSION = "10"; // bump when data/Vanilla.js changes so browsers fetch the new file
 
 // ---------------------------------------------------------------- helpers
 const $ = s => document.querySelector(s);
@@ -144,6 +144,7 @@ function buildIndexes() {
   for (const [cid, c] of Object.entries(D.creatures)) {
     const tr = (c.drops || []).find(d => /^Trophy/.test(d[0]));
     if (tr) IX.trophyOf[cid] = tr[0];
+    else if (D.bosses && D.bosses[cid] && D.bosses[cid].icon && D.items[D.bosses[cid].icon]) IX.trophyOf[cid] = D.bosses[cid].icon; // e.g. Kall uses Sacrificial Blood
   }
   // search index
   IX.search = [];
@@ -317,9 +318,11 @@ ROUTES.home = function () {
     </a>`;
   }).join("");
   const nItems = Object.values(D.items).filter(i => !i.uo).length;
-  return `<div class="banner" style="color:var(--gold)"><div class="exp">Valheim reference</div><h1>Valheim Codex</h1>
+  const ev = activeSeason();
+  return `<div class="banner" style="color:${ev ? SEASON_INFO[ev].color : "var(--gold)"}"><div class="exp">Valheim reference</div><h1>Valheim Codex</h1>
     <div class="txt">Every item, creature, station and building piece, linked together. Each biome has its own page with its boss, creatures, materials and gear.
     Set <b>I've reached</b> at the top to hide spoilers from biomes you haven't been to yet.</div></div>
+    ${ev ? seasonStrip(ev) : ""}
     <h2>Biomes</h2><div class="biomegrid">${cards}</div>
     ${hiddenCount ? `<p class="small">${hiddenCount} later biome${hiddenCount > 1 ? "s are" : " is"} hidden by your "I've reached" setting.</p>` : ""}
     <h2>About the data</h2>
@@ -380,9 +383,9 @@ ROUTES.biome.tierOf = arg => (BIOMES[+arg] ? +arg : null);
 
 // seasonal events (dates from the Valheim wiki): pieces can only be built while the event runs
 const SEASON_INFO = {
-  Yule: { from: [12, 1], to: [1, 6], dates: "Dec 1 – Jan 6", blurb: "Christmas and the new year" },
-  Midsummer: { from: [6, 1], to: [7, 6], dates: "Jun 1 – Jul 6", blurb: "around the summer solstice" },
-  Halloween: { from: [10, 1], to: [11, 6], dates: "Oct 1 – Nov 6", blurb: "around Halloween" },
+  Yule: { from: [12, 1], to: [1, 6], dates: "Dec 1 – Jan 6", blurb: "Christmas and the new year", color: "#e5524e" },
+  Midsummer: { from: [6, 1], to: [7, 6], dates: "Jun 1 – Jul 6", blurb: "around the summer solstice", color: "#9fd65a" },
+  Halloween: { from: [10, 1], to: [11, 6], dates: "Oct 1 – Nov 6", blurb: "around Halloween", color: "#ff8a3d" },
 };
 function seasonActive(ev, d) {
   const s = SEASON_INFO[ev]; if (!s) return false;
@@ -395,6 +398,24 @@ function seasonTag(ev, opt) {
   const on = seasonActive(ev);
   return `<a class="tag sea${on ? " on" : ""}" href="#seasonal" title="${esc(ev)} event: ${esc(s.dates)}${on ? " (running now)" : ""}">${esc(ev)}${opt && opt.only ? " event only" : ""} · ${esc(s.dates)}${on ? " · now!" : ""}</a>`;
 }
+// the event running today (if any), and a home page strip for it
+function activeSeason(d) { return Object.keys(SEASON_INFO).find(e => seasonActive(e, d)) || null; }
+function seasonDaysLeft(ev, d) {
+  const s = SEASON_INFO[ev]; d = d || new Date();
+  const today = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  let end = new Date(d.getFullYear(), s.to[0] - 1, s.to[1]);
+  if (end < today) end = new Date(d.getFullYear() + 1, s.to[0] - 1, s.to[1]);
+  return Math.round((end - today) / 864e5);
+}
+function seasonStrip(ev) {
+  const s = SEASON_INFO[ev], left = seasonDaysLeft(ev);
+  const ids = Object.entries(D.seasonal || {}).filter(([, e]) => e === ev).map(([id]) => id);
+  const links = ids.map(id => D.pieces[id] ? pieceLink(id) : D.items[id] ? itemLink(id) : "").join("");
+  return `<div class="evstrip" style="--ev:${s.color}"><div class="evhead"><span class="evname">${esc(ev)} is on in Valheim</span>
+    <span class="small">${esc(s.dates)} · ${left === 0 ? "last day!" : left === 1 ? "1 day left" : left + " days left"}</span></div>
+    <div class="small">These can only be built or crafted while the event runs. What you make stays after it ends, but a destroyed piece can't be rebuilt until the event comes back.</div>
+    ${links ? `<div class="cost">${links}</div>` : ""}<a class="small" href="#seasonal">All seasonal pieces and items</a></div>`;
+}
 // notes from corrections.json, keyed like "item/OnionSeeds", "mob/Troll", "biome/3"
 function noteBox(key) {
   const n = D.notes && D.notes[key];
@@ -402,6 +423,6 @@ function noteBox(key) {
   return [].concat(n).map(t => `<div class="note tipnote"><b>Note:</b> ${esc(t)}</div>`).join("");
 }
 // (lists and detail pages are defined in part 2 below)
-window.__codex = { SEASON_INFO, seasonActive, seasonTag, noteBox, isBoss, ROUTES, D: () => D, IX, S, BIOMES, BKEY, BKEYNAME, CATS, CATNAME, DTYPES, DNAME, PIECE_CAT, BOSS_NAMES, esc, fmt, pct, tname, tb, visible, secs, itemLink, mobLink, pieceLink, stationLink, costList, cmd, dmgMods, itemIcon, mobIcon, pieceIcon, route, LS, toast };
+window.__codex = { SEASON_INFO, seasonActive, activeSeason, seasonTag, noteBox, isBoss, ROUTES, D: () => D, IX, S, BIOMES, BKEY, BKEYNAME, CATS, CATNAME, DTYPES, DNAME, PIECE_CAT, BOSS_NAMES, esc, fmt, pct, tname, tb, visible, secs, itemLink, mobLink, pieceLink, stationLink, costList, cmd, dmgMods, itemIcon, mobIcon, pieceIcon, route, LS, toast };
 window.addEventListener("DOMContentLoaded", () => setTimeout(initOptions, 0));
 })();
