@@ -198,8 +198,9 @@ a.tag.sea:hover{text-decoration:none;filter:brightness(1.2)}
   background:var(--evl) left center/auto 100% no-repeat,var(--evr) right center/auto 100% no-repeat,#030b10;
   box-shadow:0 0 18px color-mix(in srgb,var(--ev) 22%,transparent)}
 .evban .evtext{flex:1 1 320px;padding-left:22px;border-left:2px solid color-mix(in srgb,var(--ev) 75%,transparent);position:relative}
-.evban .evtext::before{content:"ᛉ";position:absolute;left:-8px;top:50%;transform:translateY(-50%);color:var(--ev);background:#030b10;font-size:.9rem;line-height:1.2;padding:2px 0}
-.evban .evtitle{font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:1.5rem;color:var(--ev);line-height:1.15}
+.evban .evtext::before{content:"";position:absolute;left:-1px;top:50%;width:9px;height:9px;transform:translate(-50%,-50%) rotate(45deg);border:2px solid var(--ev);background:#030b10;box-shadow:0 0 0 3px #030b10}
+.evban .evtitle{font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:1.4rem;color:var(--ev);line-height:1.15;white-space:nowrap}
+@media (max-width:420px){.evban .evtitle{white-space:normal}}
 .evban .evwhen{color:#c8cfd8;margin:2px 0 6px}
 .evban .evnote{color:#aeb7c2;font-size:.86rem;line-height:1.4;max-width:46ch}
 .evban .evunl{flex:none;padding-left:24px;border-left:1px solid rgba(255,255,255,.12)}
