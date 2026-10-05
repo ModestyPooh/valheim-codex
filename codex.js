@@ -4,14 +4,14 @@
 
 // ---------------------------------------------------------------- constants
 const BIOMES = [
-  { t: 0, n: "Meadows", keys: ["Meadows"], exp: "Biome 1 · Original game", blurb: "Gentle fields and forests where every viking starts." },
-  { t: 1, n: "Black Forest", keys: ["BlackForest"], exp: "Biome 2 · Original game", blurb: "Dark woods with copper, tin, trolls and burial chambers." },
-  { t: 2, n: "Swamp & Ocean", keys: ["Swamp", "Ocean"], exp: "Biome 3 · Original game", blurb: "Iron in the sunken crypts, serpents out at sea." },
-  { t: 3, n: "Mountains", keys: ["Mountain"], exp: "Biome 4 · Original game", blurb: "Silver, wolves and drakes. Bring frost resistance." },
-  { t: 4, n: "Plains", keys: ["Plains"], exp: "Biome 5 · Original game", blurb: "Fulings, lox, barley and black metal." },
-  { t: 5, n: "Mistlands", keys: ["Mistlands"], exp: "Biome 6 · Mistlands update", blurb: "Dvergr, seekers and eitr in the mist." },
-  { t: 6, n: "Ashlands", keys: ["AshLands"], exp: "Biome 7 · Ashlands update", blurb: "Fire, flametal and the Charred army." },
-  { t: 7, n: "Deep North", keys: ["DeepNorth"], exp: "Biome 8 · Full release (1.0)", blurb: "Frozen halls, bloodgold and the Nord forges." },
+  { t: 0, n: "Meadows", keys: ["Meadows"], exp: "Early Access launch · 2021", blurb: "Gentle fields and forests where every viking starts." },
+  { t: 1, n: "Black Forest", keys: ["BlackForest"], exp: "Early Access launch · 2021", blurb: "Dark woods with copper, tin, trolls and burial chambers." },
+  { t: 2, n: "Swamp & Ocean", keys: ["Swamp", "Ocean"], exp: "Early Access launch · 2021", blurb: "Iron in the sunken crypts, serpents out at sea." },
+  { t: 3, n: "Mountains", keys: ["Mountain"], exp: "Early Access launch · 2021", blurb: "Silver, wolves and drakes. Bring frost resistance." },
+  { t: 4, n: "Plains", keys: ["Plains"], exp: "Early Access launch · 2021", blurb: "Fulings, lox, barley and black metal." },
+  { t: 5, n: "Mistlands", keys: ["Mistlands"], exp: "Mistlands update · 2022", blurb: "Dvergr, seekers and eitr in the mist." },
+  { t: 6, n: "Ashlands", keys: ["AshLands"], exp: "Ashlands update · 2024", blurb: "Fire, flametal and the Charred army." },
+  { t: 7, n: "Deep North", keys: ["DeepNorth"], exp: "Full release (1.0) · 2026", blurb: "Frozen halls, bloodgold and the Nord forges." },
 ];
 const BKEY = { Meadows: 0, BlackForest: 1, Swamp: 2, Ocean: 2, Mountain: 3, Plains: 4, Mistlands: 5, AshLands: 6, DeepNorth: 7 };
 const BKEYNAME = { Meadows: "Meadows", BlackForest: "Black Forest", Swamp: "Swamp", Ocean: "Ocean", Mountain: "Mountains", Plains: "Plains", Mistlands: "Mistlands", AshLands: "Ashlands", DeepNorth: "Deep North" };
@@ -35,7 +35,7 @@ const LS = {
   set(k, v) { try { localStorage.setItem("vcodex." + k, JSON.stringify(v)); } catch (e) { } },
 };
 const IX = {}; // indexes built per dump
-const DATA_VERSION = "8"; // bump when data/Vanilla.js changes so browsers fetch the new file
+const DATA_VERSION = "9"; // bump when data/Vanilla.js changes so browsers fetch the new file
 
 // ---------------------------------------------------------------- helpers
 const $ = s => document.querySelector(s);
@@ -176,6 +176,7 @@ function tipHtml(kind, id) {
     h += ln.map(l => `<div class="tl">${l}</div>`).join("");
     if (it.d) h += `<div class="td">${esc(it.d)}</div>`;
     if (it.uo) h += `<div class="tl faint">No known way to get this</div>`;
+    if (it.nv) h += `<div class="tl" style="color:#ffb37a">Only in the game files, not found in the world</div>`;
     return h;
   }
   if (kind === "mob") {
@@ -262,7 +263,7 @@ function loadDump(name) {
     if (!D) { $("#main").innerHTML = `<div class="note warnnote">Couldn't load <code>data/${esc(name)}.js</code>. Run convert.py on the dump first.</div>`; return; }
     buildIndexes();
     const m = D.meta || {};
-    $("#footdata").textContent = `Vanilla data from Valheim ${m.game || "?"} · updated ${m.date || ""}`;
+    $("#footdata").textContent = `Data from Valheim ${m.game || "?"} · updated ${m.date || ""}`;
     renderBiomeNav(); route();
   };
   if (window.CODEX_DATA[name]) return go();
@@ -310,13 +311,13 @@ ROUTES.home = function () {
     const mobs = Object.values(D.creatures).filter(c => c.ti === b.t && !c.boss).length;
     const bosses = Object.entries(D.creatures).filter(([, c]) => isBoss(c) && c.ti === b.t);
     return `<a class="bcard t${b.t}" href="#biome/${b.t}">
-      <div class="exp">${esc(b.exp)}</div><h3>${esc(b.n)}</h3>
+      <h3>${esc(b.n)}</h3>
       <div class="cnt">${items} items · ${mobs} creatures</div>
       ${bosses.map(([id]) => `<div class="boss">${mobIcon(id, "m")}<span>${esc(D.creatures[id].n)}</span></div>`).join("")}
     </a>`;
   }).join("");
   const nItems = Object.values(D.items).filter(i => !i.uo).length;
-  return `<div class="banner" style="color:var(--gold)"><div class="exp">Vanilla Valheim reference</div><h1>Valheim Codex</h1>
+  return `<div class="banner" style="color:var(--gold)"><div class="exp">Valheim reference</div><h1>Valheim Codex</h1>
     <div class="txt">Every item, creature, station and building piece, linked together. Each biome has its own page with its boss, creatures, materials and gear.
     Set <b>I've reached</b> at the top to hide spoilers from biomes you haven't been to yet.</div></div>
     <h2>Biomes</h2><div class="biomegrid">${cards}</div>
@@ -343,7 +344,10 @@ ROUTES.biome = function (arg) {
   const mobCard = ([cid, c]) => `<div class="card row">${mobLink(cid, { size: "" })}<span class="sub" style="margin-left:auto">${fmt(c.hp)} HP</span></div>`;
   // raw materials: has a gather/drop source
   const mats = byCat("mat").concat(byCat("trophy"));
-  const raw = mats.filter(([id]) => (D.src[id] || []).some(s => ["drop", "pick", "mine", "tree", "break", "chest", "trader"].includes(s.k)) && !D.recipes[id]);
+  // refined = made from something (smelted, cooked, crafted) and not gathered in the wild; chests/breakables don't make it "raw"
+  const wild = id => (D.src[id] || []).some(s => ["drop", "pick", "mine", "tree", "grow"].includes(s.k));
+  const made_ = id => !!D.recipes[id] || (D.src[id] || []).some(s => s.k === "conv");
+  const raw = mats.filter(([id]) => !(made_(id) && !wild(id)));
   const made = mats.filter(x => !raw.includes(x));
   const stationsAll = Object.entries(D.pieces).filter(([pid, p]) => p.ti === t && p.tool === "Hammer" && (p.cs || D.conv[pid] || p.cat === "Crafting"));
   const pieceCount = Object.values(D.pieces).filter(p => p.ti === t && p.tool !== "Feaster").length;
@@ -374,6 +378,23 @@ ROUTES.biome = function (arg) {
 
 ROUTES.biome.tierOf = arg => (BIOMES[+arg] ? +arg : null);
 
+// seasonal events (dates from the Valheim wiki): pieces can only be built while the event runs
+const SEASON_INFO = {
+  Yule: { from: [12, 1], to: [1, 6], dates: "Dec 1 – Jan 6", blurb: "Christmas and the new year" },
+  Midsummer: { from: [6, 1], to: [7, 6], dates: "Jun 1 – Jul 6", blurb: "around the summer solstice" },
+  Halloween: { from: [10, 1], to: [11, 6], dates: "Oct 1 – Nov 6", blurb: "around Halloween" },
+};
+function seasonActive(ev, d) {
+  const s = SEASON_INFO[ev]; if (!s) return false;
+  d = d || new Date(); const v = (d.getMonth() + 1) * 100 + d.getDate();
+  const a = s.from[0] * 100 + s.from[1], b = s.to[0] * 100 + s.to[1];
+  return a <= b ? v >= a && v <= b : v >= a || v <= b;
+}
+function seasonTag(ev, opt) {
+  const s = SEASON_INFO[ev]; if (!s) return `<span class="tag sea">${esc(ev)}</span>`;
+  const on = seasonActive(ev);
+  return `<a class="tag sea${on ? " on" : ""}" href="#seasonal" title="${esc(ev)} event: ${esc(s.dates)}${on ? " (running now)" : ""}">${esc(ev)}${opt && opt.only ? " event only" : ""} · ${esc(s.dates)}${on ? " · now!" : ""}</a>`;
+}
 // notes from corrections.json, keyed like "item/OnionSeeds", "mob/Troll", "biome/3"
 function noteBox(key) {
   const n = D.notes && D.notes[key];
@@ -381,6 +402,6 @@ function noteBox(key) {
   return [].concat(n).map(t => `<div class="note tipnote"><b>Note:</b> ${esc(t)}</div>`).join("");
 }
 // (lists and detail pages are defined in part 2 below)
-window.__codex = { noteBox, isBoss, ROUTES, D: () => D, IX, S, BIOMES, BKEY, BKEYNAME, CATS, CATNAME, DTYPES, DNAME, PIECE_CAT, BOSS_NAMES, esc, fmt, pct, tname, tb, visible, secs, itemLink, mobLink, pieceLink, stationLink, costList, cmd, dmgMods, itemIcon, mobIcon, pieceIcon, route, LS, toast };
+window.__codex = { SEASON_INFO, seasonActive, seasonTag, noteBox, isBoss, ROUTES, D: () => D, IX, S, BIOMES, BKEY, BKEYNAME, CATS, CATNAME, DTYPES, DNAME, PIECE_CAT, BOSS_NAMES, esc, fmt, pct, tname, tb, visible, secs, itemLink, mobLink, pieceLink, stationLink, costList, cmd, dmgMods, itemIcon, mobIcon, pieceIcon, route, LS, toast };
 window.addEventListener("DOMContentLoaded", () => setTimeout(initOptions, 0));
 })();

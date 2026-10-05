@@ -114,7 +114,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tip .td{color:#c2b48a;font-style:italic;margin-top:5px}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#2d3a4d;color:#fff;padding:7px 14px;border-radius:8px;z-index:60;font-size:.9rem}
 footer.sig{max-width:1280px;margin:0 auto;padding:30px 16px 48px;text-align:center;border-top:1px solid var(--line);color:var(--dim)}
-footer.sig img{width:min(360px,80vw);height:auto;display:block;margin:0 auto 6px;filter:brightness(1.45) saturate(1.1) drop-shadow(0 0 14px rgba(150,90,230,.45)) drop-shadow(0 0 4px rgba(190,140,255,.35))}
 .listtools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:6px 0 10px}
 .listtools input{padding:6px 10px;border-radius:6px;border:1px solid var(--line);background:var(--bg2);color:var(--text);min-width:200px}
 .count{color:var(--faint);font-size:.85rem}
@@ -184,3 +183,8 @@ ul.tips{margin:6px 0;padding-left:20px}ul.tips li{margin:4px 0}
 
 .tag.sea{background:#3a2a4d;color:#d9c2ff}
 .card.summon{border-left:4px solid var(--gold)}
+.tag.nv{background:#4d3216;color:#ffc58a}
+.tag.sea.on{background:#5a2e7a;color:#fff;box-shadow:0 0 0 1px #b58cff inset}
+a.tag.sea:hover{text-decoration:none;filter:brightness(1.2)}
+
+.note ul.rules{margin:6px 0 2px;padding-left:20px}.note ul.rules li{margin:3px 0}

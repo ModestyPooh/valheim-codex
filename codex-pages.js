@@ -2,7 +2,7 @@
 "use strict";
 (function () {
 const X = window.__codex;
-const { noteBox, isBoss, ROUTES, IX, S, BIOMES, BKEY, BKEYNAME, CATS, CATNAME, DTYPES, DNAME, PIECE_CAT, esc, fmt, pct, tname, tb, visible, secs,
+const { seasonTag, noteBox, isBoss, ROUTES, IX, S, BIOMES, BKEY, BKEYNAME, CATS, CATNAME, DTYPES, DNAME, PIECE_CAT, esc, fmt, pct, tname, tb, visible, secs,
   itemLink, mobLink, pieceLink, stationLink, costList, cmd, dmgMods, itemIcon, mobIcon, pieceIcon, LS } = X;
 let D;
 const fresh = () => (D = X.D());
@@ -82,7 +82,7 @@ ROUTES.items = function (arg) {
     .filter(r => (cat === "all" || r.it.c === cat) && visible(r.it.ti) && (S.showUnused || !r.it.uo)
       && (UI.itier === "all" || String(r.it.ti) === UI.itier) && (!q || (r.it.n + " " + r.id).toLowerCase().includes(q)));
   const cols = [
-    { k: "n", label: "Item", get: r => r.it.n, html: r => itemLink(r.id, { size: "" }) + (r.it.uo ? ` <span class="tag uo">unobtainable</span>` : "") },
+    { k: "n", label: "Item", get: r => r.it.n, html: r => itemLink(r.id, { size: "" }) + (r.it.uo ? ` <span class="tag uo">unobtainable</span>` : "") + (r.it.nv ? ` <span class="tag nv">Game files only</span>` : "") },
     { k: "s", label: "Type", get: r => r.it.s || "", html: r => `<span class="dim">${esc(r.it.s || CATNAME[r.it.c])}</span>` },
     { k: "ti", label: "Biome", get: r => r.it.ti ?? 99, html: r => tb(r.it.ti) },
     { k: "ks", label: "Stats", get: r => keyStat(r.it), html: r => keyStatText(r.it) },
@@ -113,7 +113,7 @@ ROUTES.item = function (id) {
   const mq = it.mq || 1;
   const spoiler = !visible(it.ti) ? `<div class="note warnnote">Spoiler: this is from ${esc(tname(it.ti))}, past where you've set "I've reached".</div>` : "";
   let h = `${spoiler}<div class="dh">${itemIcon(id, "l")}<div class="ttl"><h1 class="t${it.ti ?? ""}">${esc(it.n)}</h1>
-    <div class="meta">${tb(it.ti)}<span class="tag">${esc(it.s || CATNAME[it.c] || it.c)}</span>${it.sk ? `<span class="tag">Skill: ${esc(it.sk)}</span>` : ""}${it.uo ? `<span class="tag uo">No known source</span>` : ""}</div>
+    <div class="meta">${tb(it.ti)}<span class="tag">${esc(it.s || CATNAME[it.c] || it.c)}</span>${it.sk ? `<span class="tag">Skill: ${esc(it.sk)}</span>` : ""}${it.uo ? `<span class="tag uo">No known source</span>` : ""}${it.nv ? `<span class="tag nv">Game files only</span>` : ""}</div>
     ${it.d ? `<div class="desc">${esc(it.d)}</div>` : ""}
     <div class="cmd"><span class="small">Prefab</span> ${cmd(id)} <span class="small">Spawn</span> ${cmd(`spawn ${id} ${it.st > 1 ? Math.min(it.st, 50) : 1}${mq > 1 ? " " + mq : ""}`)}</div></div></div>`;
 
@@ -166,8 +166,11 @@ ROUTES.item = function (id) {
     const tot = {}, totU = {};
     h += `<div class="tw"><table><tr><th>Q</th><th>Station</th><th>Cost</th></tr>`;
     r.lv.forEach(lv => {
-      if (!(r.up && lv.q === 1)) { lv.c.forEach(([c, n]) => tot[c] = (tot[c] || 0) + n); (lv.u || []).forEach(([c, n]) => totU[c] = (totU[c] || 0) + n); }
-      h += `<tr><td>${lv.q === 1 ? "Craft" : "Q" + lv.q}</td><td class="dim">lvl ${lv.sl}</td><td>${costList(lv.c)}${(lv.u || []).length ? `<div class="small" style="margin-top:3px">Upgrade with: ${(lv.u || []).map(([u, n]) => itemLink(u, { n })).join(" ")}</div>` : ""}</td></tr>`;
+      if (!(r.up && lv.q === 1) && !r.one) { lv.c.forEach(([c, n]) => tot[c] = (tot[c] || 0) + n); (lv.u || []).forEach(([c, n]) => totU[c] = (totU[c] || 0) + n); }
+      const costHtml = r.one
+        ? `<div class="small" style="margin-bottom:4px"><b>Any one of these</b>${r.extra ? " · bigger fish give extra" : ""}:</div><div class="cost">${lv.c.map(([c, n]) => itemLink(c, { n }) + (r.extra && r.extra[c] ? ` <span class="faint">(+${r.extra[c]})</span>` : "")).join("")}</div>`
+        : costList(lv.c);
+      h += `<tr><td>${lv.q === 1 ? "Craft" : "Q" + lv.q}</td><td class="dim">lvl ${lv.sl}</td><td>${costHtml}${(lv.u || []).length ? `<div class="small" style="margin-top:3px">Upgrade with: ${(lv.u || []).map(([u, n]) => itemLink(u, { n })).join(" ")}</div>` : ""}</td></tr>`;
     });
     if (r.lv.length > 1) h += `<tr><td><b>Total</b></td><td class="dim">to Q${r.lv.length}</td><td>${costList(Object.entries(tot))}${Object.keys(totU).length ? `<div class="small">Plus: ${Object.entries(totU).map(([u, n]) => itemLink(u, { n })).join(" ")}</div>` : ""}</td></tr>`;
     h += `</table></div></div>`;
@@ -378,11 +381,11 @@ ROUTES.piece = function (pid) {
   if (!p && !cv) return `<div class="note warnnote">No piece called <code>${esc(pid)}</code>.</div>`;
   const P = p || { n: cv.n };
   let h = `<div class="dh">${pieceIcon(pid, "l")}<div class="ttl"><h1 class="t${P.ti ?? ""}">${esc(P.n)}</h1>
-    <div class="meta">${tb(P.ti)}${P.sea ? `<a class="tag sea" href="#seasonal">${esc(P.sea)} event only</a>` : ""}${P.cat ? `<span class="tag">${esc(PIECE_CAT[P.cat] || P.cat)}</span>` : ""}${P.tool ? `<span class="tag">${esc(P.tool)}</span>` : ""}</div>
+    <div class="meta">${tb(P.ti)}${P.sea ? seasonTag(P.sea, { only: true }) : ""}${P.cat ? `<span class="tag">${esc(PIECE_CAT[P.cat] || P.cat)}</span>` : ""}${P.tool ? `<span class="tag">${esc(P.tool)}</span>` : ""}</div>
     ${P.d ? `<div class="desc">${esc(P.d)}</div>` : ""}<div class="cmd"><span class="small">Prefab</span> ${cmd(pid)}</div></div></div>`;
   h += noteBox("piece/" + pid);
   h += `<div class="cols"><div><h2>Build</h2><dl class="kv"><dt>Cost</dt><dd>${costList(P.res)}</dd><dt>Needs</dt><dd>${stationLink(P.st)}</dd>
-    ${P.cf ? `<dt>Comfort</dt><dd>${P.cf[0]} <span class="faint">(${esc(P.cf[1] || "")} group – only the best piece in each group counts)</span></dd>` : ""}
+    ${P.cf ? `<dt>Comfort</dt><dd>${comfortLine(P)}</dd>` : ""}
     ${P.hp ? `<dt>Health</dt><dd>${fmt(P.hp)}</dd>` : ""}
     ${P.plant ? `<dt>Plant</dt><dd>${esc(typeof P.plant === "object" ? JSON.stringify(P.plant) : P.plant)}</dd>` : ""}
     ${P.biome ? `<dt>Biomes</dt><dd>${esc([].concat(P.biome).map(b => BKEYNAME[b] || b).join(", "))}</dd>` : ""}</dl>`;
@@ -434,9 +437,17 @@ ROUTES.traders = function () {
   fresh();
   const tr = D.traders || {};
   if (!Object.keys(tr).length) return `<h1>Traders</h1><p class="empty">No trader data.</p>`;
-  return `<h1>Traders</h1><div class="note">Prices and unlocks for vanilla Valheim.</div>` +
+  return `<h1>Traders</h1><div class="note">Prices and unlocks for every trader.</div>` +
     Object.entries(tr).map(([tid, t]) => `<h2>${esc(t.n)} <span class="small">${esc(t.b)}</span></h2><div class="tw"><table><tr><th>Item</th><th class="n">Price</th><th class="n">Amount</th><th>Unlocks after</th></tr>
       ${t.stock.filter(([iid]) => { const s = (D.src[iid] || []).find(x => x.k === "trader" && x.id === tid); return !s || visible(s.ti); })
         .map(([iid, price, stack, req]) => `<tr><td>${itemLink(iid)}</td><td class="n">${price}</td><td class="n">${stack}</td><td class="dim">${esc(req || "–")}</td></tr>`).join("")}</table></div>`).join("");
 };
+// comfort line on piece pages: explain that pieces in the same group don't stack
+function comfortLine(P) {
+  const v = P.cf[0], g = P.cf[1] && P.cf[1] !== "None" ? P.cf[1] : null;
+  const more = ` <a href="#comfort" class="small">Comfort planner</a>`;
+  if (!g) return `<b>+${v}</b> <span class="tag">counts on its own</span><div class="small dim">Adds on top of the comfort groups, but building a second one adds nothing.${more}</div>`;
+  return `<b>+${v}</b> <span class="tag">${esc(g)} group</span><div class="small dim">Only your best ${esc(g)} piece within 10 m counts. Ten of them still give +${v}, not +${v * 10}.${more}</div>`;
+}
 })();
+

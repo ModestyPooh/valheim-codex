@@ -2,7 +2,7 @@
 "use strict";
 (function () {
 const X = window.__codex;
-const { ROUTES, IX, S, BIOMES, esc, fmt, tname, tb, visible, secs, itemLink, mobLink, pieceLink, stationLink, costList, itemIcon, noteBox, LS, toast } = X;
+const { SEASON_INFO, seasonActive, seasonTag, ROUTES, IX, S, BIOMES, esc, fmt, tname, tb, visible, secs, itemLink, mobLink, pieceLink, stationLink, costList, itemIcon, noteBox, LS, toast } = X;
 let D;
 const fresh = () => (D = X.D());
 
@@ -20,7 +20,7 @@ function foods() {
   const raw = cookInputs();
   return Object.entries(D.items).filter(([id, it]) => it.food && !it.uo && !raw.has(id) && (it.food.health + it.food.stamina + (it.food.eitr || 0)) > 0)
     .map(([id, it]) => ({ id, name: it.n, tier: it.ti ?? 0, hp: it.food.health, st: it.food.stamina, ei: it.food.eitr || 0,
-      dur: Math.round((it.food.duration || 0) / 60), heal: it.food.regen || 0, feast: /^Feast/.test(id) }));
+      dur: Math.round((it.food.duration || 0) / 60), heal: it.food.regen || 0, feast: /^Feast/.test(id), nv: !!it.nv }));
 }
 function foodType(f) {
   if (f.feast) return "feast";
@@ -37,7 +37,7 @@ const STYLES = [
   { key: "paladin", name: "Paladin", color: "#c9b25a", slots: ["hp", "st", "ei"], good: ["Melee plus support magic (Staff of Protection, healing)", "An all-rounder for mixed fights"], down: ["Not the best at any one thing"] },
   { key: "battlemage", name: "Battle Mage", color: "#7c63c9", slots: ["hp", "ei", "ei"], good: ["Elemental and blood magic that can survive a hit", "Staves with a sword or shield as backup"], down: ["Low stamina: dodging and melee are limited"] },
   { key: "glasscannon", name: "Glass-Cannon Mage", color: "#4a78c9", slots: ["ei", "ei", "ei"], good: ["Maximum spell damage and summons from a safe distance"], down: ["Very low health and stamina"] },
-  { key: "banquet", name: "Banquet", color: "#b8862f", slots: ["feast", "feast", "feast"], good: ["Long trips and building sessions: feasts last far longer than normal food", "One cook feeds the group: every feast has several servings"], down: ["Lower peaks than a specialised combo", "Each feast needs its biome's Bog Witch spice first"] },
+  { key: "banquet", name: "Banquet", color: "#b8862f", slots: ["feast", "feast", "feast"], good: ["Long trips and building sessions: feasts last far longer than normal food", "One cook feeds the group: every feast has several servings", "Until you can make 3 feasts, the rest is the longest-lasting food you have"], down: ["Lower peaks than a specialised combo", "Each feast needs its biome's Bog Witch spice first"] },
   { key: "balanced", name: "Balanced", color: "#7d8a63", slots: ["any", "any", "any"], score: f => f.hp + f.st, good: ["Building, travelling and relaxed play", "Even health and stamina for mixed tasks"], down: ["Lower peaks than a specialised combo"] },
 ];
 const SLOTKEY = { hp: f => f.hp, st: f => f.st, ei: f => f.ei };
@@ -51,11 +51,19 @@ function rankFor(slot, pool, style) {
   return typed.concat(pool.filter(f => foodType(f) !== slot && key(f) > 0).sort(cmp));
 }
 function bestCombo(style, tier, all) {
-  const pool = all.filter(f => f.tier <= tier);
+  const pool = all.filter(f => f.tier <= tier && !f.nv);
   if (style.key === "banquet") {
+    // all about lasting long: the best feasts you can make, topped up with the longest-lasting normal food
     const feasts = pool.filter(f => f.feast).sort((a, b) => (b.hp + b.st + b.ei) - (a.hp + a.st + a.ei) || b.tier - a.tier);
-    if (feasts.length < 3) return { missing: "feast", have: feasts };
-    return { picks: feasts.slice(0, 3).map((f, i) => ({ food: f, slot: "feast", alt: feasts[3 + i] })) };
+    if (!feasts.length) return { missing: "feast", have: feasts };
+    const long = pool.filter(f => !f.feast).sort((a, b) => b.dur - a.dur || (b.hp + b.st + b.ei) - (a.hp + a.st + a.ei));
+    const chosen = feasts.slice(0, 3).map(f => ({ food: f, slot: "feast" }));
+    let li = 0;
+    while (chosen.length < 3 && li < long.length) chosen.push({ food: long[li++], slot: "long" });
+    const used = new Set(chosen.map(p => p.food.id));
+    const altF = feasts.filter(f => !used.has(f.id)), altL = long.filter(f => !used.has(f.id));
+    chosen.forEach(p => { const a = (p.slot === "feast" ? altF : altL).shift(); if (a) { p.alt = a; used.add(a.id); } });
+    return { picks: chosen };
   }
   if (style.key === "balanced") {
     const nf = pool.filter(f => !f.feast);
@@ -89,12 +97,12 @@ ROUTES.food = function () {
     <div class="note">Pick the furthest biome you've reached. Each card shows the best 3 foods for that playstyle from everything you can make by then. You can eat 3 different foods at once.</div>
     <div class="chips" id="ftier">${BIOMES.filter(b => b.t <= S.reach).map(b => `<span class="chip t${b.t}${b.t === t ? " on" : ""}" data-ft="${b.t}">${esc(b.n)}</span>`).join("")}</div>
     <div class="combos">`;
+  const hiddenCards = [];
   for (const st of STYLES) {
     const c = bestCombo(st, t, all);
-    const sub = st.key === "banquet" ? "3 feasts · long-lasting" : st.key === "balanced" ? "Even health & stamina" : st.slots.map(x => ({ hp: "Health", st: "Stamina", ei: "Eitr" })[x]).join(" · ");
+    const sub = st.key === "banquet" ? "Feasts + longest-lasting food" : st.key === "balanced" ? "Even health & stamina" : st.slots.map(x => ({ hp: "Health", st: "Stamina", ei: "Eitr" })[x]).join(" · ");
     h += `<div class="combo" style="--cc:${st.color}"><div class="chd">${esc(st.name)}<span>${esc(sub)}</span></div><div class="cbody">`;
-    if (c.missing === "feast") { h += `<p class="small">Needs 3 feasts; you can make ${c.have.length} by here${c.have.length ? ": " + c.have.map(f => esc(f.name)).join(", ") : ""}.</p></div></div>`; continue; }
-    if (c.missing) { h += `<p class="small">Needs an ${SLOTLABEL[c.missing]}: eitr foods start in the <b>Mistlands</b>.</p></div></div>`; continue; }
+    if (c.missing) { h = h.slice(0, h.lastIndexOf(`<div class="combo"`)); hiddenCards.push(st.name + (c.missing === "feast" ? " (needs a feast: they need the Food Preparation Table)" : " (needs eitr food, from the Mistlands)")); continue; }
     const tot = c.picks.reduce((a, p) => ({ hp: a.hp + p.food.hp, st: a.st + p.food.st, ei: a.ei + p.food.ei }), { hp: 0, st: 0, ei: 0 });
     const minDur = Math.min(...c.picks.map(p => p.food.dur));
     const vals = f => `<span class="v hp">${f.hp || ""}</span><span class="v st">${f.st || ""}</span><span class="v ei">${f.ei || ""}</span>`;
@@ -106,13 +114,13 @@ ROUTES.food = function () {
       <div class="cgd"><b>Good for:</b> ${st.good.map(esc).join("; ")}.</div><div class="cgd"><b>Downsides:</b> ${st.down.map(esc).join("; ")}.</div>
       <button class="btn small" data-addcombo="${c.picks.map(p => p.food.id).join(",")}" title="Add these 3 to your shopping list">+ Shopping list</button></div></div></div>`;
   }
-  h += `</div><p class="small">Stamina and eitr totals add to your base 50 stamina and 0 eitr.</p>`;
+  h += `</div>${hiddenCards.length ? `<p class="small">Not available yet in ${esc(BIOMES[t].n)}: ${hiddenCards.map(esc).join(", ")}.</p>` : ""}<p class="small">Stamina and eitr totals add to your base 50 stamina and 0 eitr.</p>`;
   // all foods table
   const sorts = { total: f => f.hp + f.st + f.ei, hp: f => f.hp, st: f => f.st, ei: f => f.ei, dur: f => f.dur, heal: f => f.heal };
   const list = all.filter(f => f.tier <= S.reach).sort((a, b) => sorts[FS.sort](b) - sorts[FS.sort](a) || a.tier - b.tier);
   h += `<h2>All foods</h2><div class="chips" id="fsort"><span class="small" style="align-self:center">Sort by</span>${[["total", "Total"], ["hp", "Health"], ["st", "Stamina"], ["ei", "Eitr"], ["dur", "Duration"], ["heal", "Healing"]].map(([k, n]) => `<span class="chip${FS.sort === k ? " on" : ""}" data-fs="${k}">${n}</span>`).join("")}</div>
     <div class="tw"><table><tr><th>Food</th><th>Biome</th><th class="n">Health</th><th class="n">Stamina</th><th class="n">Eitr</th><th class="n">Minutes</th><th class="n">Healing</th></tr>
-    ${list.map(f => `<tr><td>${foodLink(f)}${f.feast ? ` <span class="tag">feast</span>` : ""}</td><td>${tb(f.tier)}</td><td class="n" style="color:#ff9a8a">${f.hp}</td><td class="n" style="color:#ffd66b">${f.st}</td><td class="n" style="color:#a9a0ff">${f.ei || ""}</td><td class="n">${f.dur}</td><td class="n">${f.heal}</td></tr>`).join("")}</table></div>`;
+    ${list.map(f => `<tr><td>${foodLink(f)}${f.feast ? ` <span class="tag">feast</span>` : ""}${f.nv ? ` <span class="tag nv">Game files only</span>` : ""}</td><td>${tb(f.tier)}</td><td class="n" style="color:#ff9a8a">${f.hp}</td><td class="n" style="color:#ffd66b">${f.st}</td><td class="n" style="color:#a9a0ff">${f.ei || ""}</td><td class="n">${f.dur}</td><td class="n">${f.heal}</td></tr>`).join("")}</table></div>`;
   return h;
 };
 ROUTES.food.after = function () {
@@ -155,7 +163,7 @@ function toRaw(totals) {
   const walk = (id, n, depth, seen) => {
     if (depth > 10 || seen.has(id)) { acc[id] = (acc[id] || 0) + n; return; }
     const r = mainRecipe(id);
-    if (r && !r.up && !isNatural(id) && r.lv[0] && r.lv[0].c.length) {
+    if (r && !r.up && !r.one && !isNatural(id) && r.lv[0] && r.lv[0].c.length) {
       const s2 = new Set(seen); s2.add(id);
       for (const [c, k] of r.lv[0].c) walk(c, k * n / (r.amt || 1), depth + 1, s2);
       return;
@@ -230,7 +238,7 @@ ROUTES.item = function (id) {
   const mq = it.mq || 1;
   const ctl = `<div class="cmd" style="margin-top:10px">${craftable && mq > 1 ? `<select id="addq">${Array.from({ length: mq }, (_, k) => `<option value="${k + 1}">Q${k + 1}</option>`).join("")}</select>` : ""}<button class="btn" data-addlist="${esc(id)}">+ Shopping list</button></div>`;
   h = h.replace(/(<div class="cmd"><span class="small">Prefab<\/span>[\s\S]*?<\/div>)/, `$1${ctl}`);
-  if (it.tp === 0) h = h.replace(`<dt>Weight</dt>`, `<dt>Portals</dt><dd><span class="dm im">Can't go through portals</span></dd><dt>Weight</dt>`);
+  if (it.tp === 0) h = h.replace(`<dt>Weight</dt>`, `<dt>Portals</dt><dd><span class="dm im">${it.np ? "Can't go through any portal, not even the Stone Portal" : "Can't go through portals"}</span></dd><dt>Weight</dt>`);
   return h;
 };
 ROUTES.item.tierOf = itemRoute.tierOf;
@@ -354,35 +362,54 @@ ROUTES.comfort = function () {
   const groups = {};
   all.forEach(x => (groups[x.g || "Counts on its own"] = groups[x.g || "Counts on its own"] || []).push(x));
   return `<h1>Comfort planner</h1>
-    <div class="note">Comfort makes your Rested buff last longer. Only the <b>best piece in each group</b> counts (one bed, one chair, one fire…), so building two chairs doesn't help. Pieces marked "counts on its own" add their comfort separately. All of this is on top of the base comfort you always get.</div>
+    <div class="note">Comfort makes your Rested buff last longer: every comfort level adds 1 minute (level 1 = 8 minutes).</div>
+    ${comfortRules()}
     <div class="chips" id="cftier">${BIOMES.filter(b => b.t <= S.reach).map(b => `<span class="chip t${b.t}${b.t === t ? " on" : ""}" data-cft="${b.t}">${esc(b.n)}</span>`).join("")}</div>
     <label class="toggle"><input type="checkbox" id="cfsea"${CF.season ? " checked" : ""}> Include seasonal pieces (Yule, Midsummer, Halloween)</label>
-    <h2>Best comfort by ${esc(BIOMES[t].n)}: <span style="color:var(--gold)">+${total}</span>${CF.season && total !== totalNoSeason ? ` <span class="small">(+${totalNoSeason} without seasonal pieces)</span>` : ""}</h2>
+    <h2>Best comfort by ${esc(BIOMES[t].n)}: <span style="color:var(--gold)">level ${total + 2}</span> <span class="small">(Rested ${restedTime(total + 2)})</span>${CF.season && total !== totalNoSeason ? ` <span class="small">· level ${totalNoSeason + 2} without seasonal pieces</span>` : ""}</h2>
+    <div class="small dim">Sheltered with a fire: 1 + 1 for being sheltered + the pieces below (your fire is one of them).</div>
     <div class="tw"><table><tr><th>Group</th><th>Best piece</th><th class="n">Comfort</th><th>Cost</th></tr>
-    ${rows.map(([k, x]) => `<tr><td class="dim">${esc(x.g || "Counts on its own")}</td><td>${pieceLink(x.id, { size: "" })}${x.p.sea ? ` <span class="tag sea">${esc(x.p.sea)}</span>` : ""}</td><td class="n"><b>+${x.v}</b></td><td>${costList(x.p.res)}</td></tr>`).join("")}</table></div>
+    ${rows.map(([k, x]) => `<tr><td class="dim">${esc(x.g || "Counts on its own")}</td><td>${pieceLink(x.id, { size: "" })}${x.p.sea ? " " + seasonTag(x.p.sea) : ""}</td><td class="n"><b>+${x.v}</b></td><td>${costList(x.p.res)}</td></tr>`).join("")}</table></div>
     ${ups.length ? `<h3>Coming in ${esc(BIOMES[t + 1].n)}</h3><div class="src">${ups.map(([k, x]) => `<div class="r">${pieceLink(x.id)} <span class="dim">${esc(x.g || "own")}: +${x.v}${best[k] ? ` (instead of +${best[k].v})` : " (new)"}</span></div>`).join("")}</div>` : ""}
     <h2>All comfort pieces</h2>
     ${Object.entries(groups).map(([g, list]) => `<h3>${esc(g)}</h3><div class="tw"><table><tr><th>Piece</th><th>Biome</th><th class="n">Comfort</th><th>Cost</th></tr>
-      ${list.map(x => `<tr><td>${pieceLink(x.id)}${x.p.sea ? ` <span class="tag sea">${esc(x.p.sea)}</span>` : ""}</td><td>${tb(x.p.ti)}</td><td class="n">+${x.v}</td><td>${costList(x.p.res)}</td></tr>`).join("")}</table></div>`).join("")}`;
+      ${list.map(x => `<tr><td>${pieceLink(x.id)}${x.p.sea ? " " + seasonTag(x.p.sea) : ""}</td><td>${tb(x.p.ti)}</td><td class="n">+${x.v}</td><td>${costList(x.p.res)}</td></tr>`).join("")}</table></div>`).join("")}`;
 };
 ROUTES.comfort.after = function () {
   document.querySelectorAll("[data-cft]").forEach(c => c.onclick = () => { CF.tier = +c.dataset.cft; X.route.keepScroll = true; X.route(); });
   const cb = document.getElementById("cfsea"); if (cb) cb.onchange = () => { CF.season = cb.checked; X.route.keepScroll = true; X.route(); };
 };
 
+function restedTime(lvl) { const s = 480 + 60 * (lvl - 1); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
+function comfortRules() {
+  // a worked example from the data: banners vs. the jute curtain in the same group
+  const ban = D.pieces.piece_banner01, cur = D.pieces.piece_cloth_hanging_door;
+  const ex = ban && ban.cf && cur && cur.cf && cur.cf[1] === ban.cf[1]
+    ? `<li><b>Ten banners still give +${ban.cf[0]}</b>, the same as one. A ${pieceLink("piece_cloth_hanging_door")} (+${cur.cf[0]}) is in the same group, so it <i>replaces</i> the banner instead of adding to it.</li>` : "";
+  return `<div class="note"><b>How comfort adds up</b><ul class="rules">
+    <li>Pieces are sorted into groups (bed, chair, table, fire, rug, banner…). <b>Only the best piece in each group counts.</b></li>
+    ${ex}
+    <li>Different groups add up: a bed, a chair, a table and a fire each count once.</li>
+    <li>Pieces that <b>count on their own</b> (like the Maypole and Yule Tree) add on top, but a second copy of the same piece adds nothing.</li>
+    <li>Pieces must be within <b>10 m</b> of you. Fires must be lit and the Hot Tub must be heated.</li>
+    <li><b>Campfire, not sheltered:</b> comfort 1 (8 min Rested).<br><b>Campfire, sheltered:</b> comfort 3 (10 min Rested). Being sheltered adds +2 when you have a fire nearby, and from then on your other comfort pieces count too.</li></ul></div>`;
+}
+
 // ================================================================= SEASONAL
-const SEASONS = [["Yule", "Around Christmas and the new year."], ["Midsummer", "Around the summer solstice in June."], ["Halloween", "Around Halloween in October."]];
+const SEASONS = ["Yule", "Midsummer", "Halloween"];
+function giftSize(p) { const d = (p.d || "").toLowerCase(); return d.includes("small") ? "small" : d.includes("large") ? "large" : "medium"; }
 ROUTES.seasonal = function () {
   fresh();
   const sea = D.seasonal || {};
-  let h = `<h1>Seasonal items</h1><div class="note">These pieces and items belong to Valheim's seasonal events. The building pieces only appear in the Hammer menu while their event is running.</div>`;
-  for (const [ev, when] of SEASONS) {
+  let h = `<h1>Seasonal items</h1><div class="note">These pieces and items belong to Valheim's seasonal events. The building pieces only appear in the Hammer menu while their event is running. Anything you built during the event stays after it ends, but once it's destroyed you can't build it again until next year.</div>`;
+  for (const ev of SEASONS) {
+    const si = SEASON_INFO[ev], on = seasonActive(ev);
     const ids = Object.keys(sea).filter(k => sea[k] === ev);
     if (!ids.length) continue;
     const pcs = ids.filter(k => D.pieces[k]), its = ids.filter(k => D.items[k]);
-    h += `<h2>${esc(ev)} <span class="small">${esc(when)}</span></h2>`;
+    h += `<h2>${esc(ev)} <span class="small">${esc(si.dates)} · ${esc(si.blurb)}</span>${on ? ` <span class="tag sea on">running now</span>` : ""}</h2>`;
     if (pcs.length) h += `<div class="tw"><table><tr><th>Piece</th><th class="n">Comfort</th><th>Cost</th></tr>${pcs.map(k => { const p = D.pieces[k];
-      return `<tr><td>${pieceLink(k, { size: "" })}</td><td class="n">${p.cf ? `+${p.cf[0]} <span class="faint">${esc(p.cf[1] && p.cf[1] !== "None" ? p.cf[1] : "own")}</span>` : ""}</td><td>${costList(p.res)}</td></tr>`; }).join("")}</table></div>`;
+      return `<tr><td>${pieceLink(k, { size: "" })}${/^piece_gift/.test(k) ? ` <span class="tag">${giftSize(p)}</span>` : ""}</td><td class="n">${p.cf ? `+${p.cf[0]} <span class="faint">${esc(p.cf[1] && p.cf[1] !== "None" ? p.cf[1] : "own")}</span>` : ""}</td><td>${costList(p.res)}</td></tr>`; }).join("")}</table></div>`;
     if (its.length) h += `<h3>Items</h3><div class="grid sm">${its.map(k => `<div class="card row">${itemLink(k, { size: "" })}</div>`).join("")}</div>`;
   }
   const anytime = ["Sparkler", "FireworksRocket_White"].filter(k => D.items[k]);
