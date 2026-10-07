@@ -22,8 +22,11 @@ const CATS = [
 const CATNAME = Object.fromEntries(CATS);
 const DTYPES = ["blunt", "slash", "pierce", "fire", "frost", "lightning", "poison", "spirit", "chop", "pickaxe"];
 const DNAME = { blunt: "Blunt", slash: "Slash", pierce: "Pierce", fire: "Fire", frost: "Frost", lightning: "Lightning", poison: "Poison", spirit: "Spirit", chop: "Chop", pickaxe: "Pickaxe", damage: "Damage" };
-const ICON_ITEM = id => `https://valheim-modding.github.io/Jotunn/Documentation/images/items/${encodeURIComponent(id)}.png`;
-const ICON_PIECE = id => `https://valheim-modding.github.io/Jotunn/Documentation/images/pieces/${encodeURIComponent(id)}.png`;
+// icons: the game's own inventory icons (from CodexDump, in icons/) when we have them, otherwise the Jotunn docs pictures
+const JOTUNN_ITEM = id => `https://valheim-modding.github.io/Jotunn/Documentation/images/items/${encodeURIComponent(id)}.png`;
+const JOTUNN_PIECE = id => `https://valheim-modding.github.io/Jotunn/Documentation/images/pieces/${encodeURIComponent(id)}.png`;
+const ICON_ITEM = id => { const e = D.items[id]; return e && e.li ? `icons/items/${encodeURIComponent(id)}.${e.li}?v=${DATA_VERSION}` : JOTUNN_ITEM(id); };
+const ICON_PIECE = id => { const e = D.pieces[id]; return e && e.li ? `icons/pieces/${encodeURIComponent(id)}.${e.li}?v=${DATA_VERSION}` : JOTUNN_PIECE(id); };
 const PIECE_CAT = { "DEEPNORTH": "Deep North", "Misc.": "Misc", "Heavy Build": "Heavy build" };
 const BOSS_NAMES = { "The Elder": 1, "Moder": 3, "Yagluth": 4, "The Queen": 5, "Fader": 6 };
 
@@ -35,7 +38,7 @@ const LS = {
   set(k, v) { try { localStorage.setItem("vcodex." + k, JSON.stringify(v)); } catch (e) { } },
 };
 const IX = {}; // indexes built per dump
-const DATA_VERSION = "10"; // bump when data/Vanilla.js changes so browsers fetch the new file
+const DATA_VERSION = "11"; // bump when data/Vanilla.js changes so browsers fetch the new file
 
 // ---------------------------------------------------------------- helpers
 const $ = s => document.querySelector(s);
@@ -56,9 +59,11 @@ function frame(size, tier, inner) {
 }
 function iconImg(kind, id, size, name, tier) {
   const src = kind === "piece" ? ICON_PIECE(id) : ICON_ITEM(id);
-  return frame(size, tier, `<img loading="lazy" src="${src}" alt="" data-ph="${esc(initials(name))}" onerror="codexIconFail(this)">`);
+  const alt = src.startsWith("icons/") ? (kind === "piece" ? JOTUNN_PIECE(id) : JOTUNN_ITEM(id)) : "";
+  return frame(size, tier, `<img loading="lazy"${alt ? ' class="gi"' : ""} src="${src}" alt=""${alt ? ` data-alt="${alt}"` : ""} data-ph="${esc(initials(name))}" onerror="codexIconFail(this)">`);
 }
 window.codexIconFail = function (img) {
+  if (img.dataset.alt) { const a = img.dataset.alt; delete img.dataset.alt; img.src = a; return; } // local icon missing: try Jotunn
   const s = document.createElement("span");
   s.className = "phi"; s.textContent = img.dataset.ph || "?";
   img.replaceWith(s);

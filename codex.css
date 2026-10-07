@@ -151,6 +151,7 @@ ul.tips{margin:6px 0;padding-left:20px}ul.tips li{margin:4px 0}
   width:40px;height:40px;border-radius:6px;border:1px solid #4a515c;background:radial-gradient(circle at 50% 40%,#2c333d,#14181d 75%);
   box-shadow:inset 0 0 0 1px rgba(0,0,0,.6),0 1px 2px rgba(0,0,0,.5)}
 .icf img{width:100%;height:100%;object-fit:contain;transform:scale(1.25);filter:drop-shadow(0 1px 1px rgba(0,0,0,.6))}
+.icf img.gi{transform:none;padding:6%}
 .icf.s{width:28px;height:28px;border-radius:4px}
 .icf.m{width:56px;height:56px;border-radius:7px}
 .icf.l{width:88px;height:88px;border-radius:10px;border-width:2px}
