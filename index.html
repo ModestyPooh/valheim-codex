@@ -17,12 +17,14 @@
 <meta name="theme-color" content="#8a5cf0">
 <link rel="icon" href="favicon.png">
 <!-- ?v= numbers make browsers fetch fresh files after an update. Bump them each update. -->
-<link rel="stylesheet" href="codex.css?v=13">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="codex.css?v=14">
 </head>
 <body>
 <header class="top">
   <div class="bar">
-    <a class="brand" href="#home"><span class="rune">ᚢ</span> Valheim Codex</a>
+    <a class="brand" href="#home"><img class="logo" src="hugin.webp" alt="" width="96" height="96"><span>Valheim Codex</span></a>
     <div class="search">
       <input id="q" type="search" placeholder="Search items, mobs, pieces, prefab names…" autocomplete="off" spellcheck="false">
       <div id="qres" class="qres" hidden></div>
@@ -44,19 +46,18 @@
     <a href="#comfort" data-n="comfort">Comfort</a>
     <a href="#seasonal" data-n="seasonal">Seasonal</a>
     <a href="#list" data-n="list">Shopping list <span id="listcount"></span></a>
-    <span class="sep"></span>
-    <span id="biomenav" class="biomenav"></span>
   </nav>
+  <nav class="bnav"><span id="biomenav" class="biomenav"></span></nav>
 </header>
 <main id="main"><p class="loading">Loading data…</p></main>
 <footer class="sig">
   <div>Made by ModestyPooh · <span id="footdata">Data from Valheim</span></div>
-  <div class="small disclaimer">Unofficial fan-made reference, not affiliated with Iron Gate AB or Coffee Stain. Valheim and all related content and icons are © Iron Gate AB. All rights reserved by their respective owners.</div>
+  <div class="small disclaimer">Unofficial fan-made reference, not affiliated with Iron Gate AB or Coffee Stain. Valheim and all related content and icons are © Iron Gate AB. Site design, code and curated content © 2026 ModestyPooh, all rights reserved.</div>
 </footer>
 <div id="tip" class="tip" hidden></div>
 <div id="toast" class="toast" hidden></div>
-<script src="codex.js?v=13"></script>
-<script src="codex-pages.js?v=13"></script>
-<script src="codex-extras.js?v=13"></script>
+<script src="codex.js?v=14"></script>
+<script src="codex-pages.js?v=14"></script>
+<script src="codex-extras.js?v=14"></script>
 </body>
 </html>

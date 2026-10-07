@@ -307,6 +307,12 @@ function route() {
   route.keepScroll = false;
 }
 window.addEventListener("hashchange", route);
+// smaller header once you scroll down (hides the biome row, shrinks the logo); gap between the two thresholds stops flicker
+window.addEventListener("scroll", () => {
+  const y = window.scrollY, b = document.body;
+  if (y > 140 && !b.classList.contains("scrolled")) b.classList.add("scrolled");
+  else if (y < 10 && b.classList.contains("scrolled")) b.classList.remove("scrolled");
+}, { passive: true });
 
 // ---------------------------------------------------------------- home
 ROUTES.home = function () {
@@ -318,15 +324,14 @@ ROUTES.home = function () {
     const bosses = Object.entries(D.creatures).filter(([, c]) => isBoss(c) && c.ti === b.t);
     return `<a class="bcard t${b.t}" href="#biome/${b.t}">
       <h3>${esc(b.n)}</h3>
-      <div class="cnt">${items} items · ${mobs} creatures</div>
+      <div class="cnt"><span>${items} items</span><span class="dot"> · </span><span>${mobs} creatures</span></div>
       ${bosses.map(([id]) => `<div class="boss">${mobIcon(id, "m")}<span>${esc(D.creatures[id].n)}</span></div>`).join("")}
     </a>`;
   }).join("");
   const nItems = Object.values(D.items).filter(i => !i.uo).length;
   const ev = activeSeason();
-  return `<div class="banner" style="color:var(--gold)"><div class="exp">Valheim reference</div><h1>Valheim Codex</h1>
-    <div class="txt">Every item, creature, station and building piece, linked together. Each biome has its own page with its boss, creatures, materials and gear.
-    Set <b>I've reached</b> at the top to hide spoilers from biomes you haven't been to yet.</div></div>
+  return `<div class="intro"><span class="il1">Valheim reference</span><span class="il2">Every item, creature, station and building piece, linked together, with a page for each biome.</span>
+    <span class="il3">Set <b>I've reached</b> at the top to hide spoilers from biomes you haven't been to yet.</span></div>
     ${ev ? seasonStrip(ev) : ""}
     <h2>Biomes</h2><div class="biomegrid">${cards}</div>
     ${hiddenCount ? `<p class="small">${hiddenCount} later biome${hiddenCount > 1 ? "s are" : " is"} hidden by your "I've reached" setting.</p>` : ""}
