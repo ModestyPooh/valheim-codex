@@ -237,3 +237,4 @@ a.tag.sea:hover{text-decoration:none;filter:brightness(1.2)}
 @media (min-width:1151px){.bcard .boss .icf.m{width:40px;height:40px;border-radius:6px}.bcard .boss{gap:7px;font-size:.82rem}.bcard h3{font-size:1.08rem}.bcard .cnt span{display:block}.bcard .cnt .dot{display:none}.bcard .cnt{white-space:normal;line-height:1.3}}
 @media (max-width:640px){.top{position:static}body.scrolled .bnav{display:block}body.scrolled .brand .logo{width:52px;height:52px;margin:0 0 -6px -6px}
 body.scrolled .bar{padding-top:16px}}
+a.plink{color:var(--dim);border-bottom:1px dotted #5a6472}a.plink:hover{color:var(--link);text-decoration:none;border-bottom-color:var(--link)}

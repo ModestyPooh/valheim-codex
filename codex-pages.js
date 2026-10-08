@@ -207,9 +207,21 @@ ROUTES.item = function (id) {
   return h;
 };
 ROUTES.item.tierOf = id => { fresh(); return D.items[id] ? D.items[id].ti : null; };
+// "where" text on a source row: link it to the place page (or the biome page) when we can tell which one it is
+const PLACE_ALIAS = { "abandoned houses": "meadows_ruins", "burial chambers": "burial_chambers" };
+function placeRef(pl) {
+  if (!pl) return "";
+  const base = pl.replace(/\s*\(.*\)\s*$/, "").trim().toLowerCase();
+  let pid = PLACE_ALIAS[base];
+  if (!pid && D.places) for (const [k, p] of Object.entries(D.places)) if ((p.name || "").toLowerCase() === base) { pid = k; break; }
+  if (pid && D.places && D.places[pid] && visible(D.places[pid].tier)) return `<a class="plink" href="#place/${encodeURIComponent(pid)}">${esc(pl)}</a>`;
+  const b = BIOMES.find(b => b.n.toLowerCase() === base || (base === "swamp" && b.t === 2));
+  if (b && visible(b.t)) return `<a class="plink" href="#biome/${b.t}">${esc(pl)}</a>`;
+  return `<span class="dim">${esc(pl)}</span>`;
+}
 function srcRow(s) {
   const kind = `<span class="kind">${SRC_KIND[s.k] || s.k}</span>`;
-  const where = (s.pl ? `<span class="dim">${esc(s.pl)}</span>` : "") + (s.b && s.b.length ? ` <span class="faint">${s.b.map(b => BKEYNAME[b] || b).join(", ")}</span>` : "");
+  const where = placeRef(s.pl) + (s.b && s.b.length ? ` <span class="faint">${s.b.map(b => BKEYNAME[b] || b).join(", ")}</span>` : "");
   const amt = (a, b) => a == null ? "" : `<b>${a === b || b == null ? a : a + "–" + b}</b>`;
   switch (s.k) {
     case "drop": {
@@ -221,7 +233,7 @@ function srcRow(s) {
     case "mine": case "tree": case "break": case "chest":
       return `<div class="r">${kind}<span>${esc(s.n)}</span> ${amt(s.min, s.max)} ${where} ${s.ti != null ? tb(s.ti) : ""} <code class="faint">${esc(s.id)}</code></div>`;
     case "conv": return `<div class="r">${kind}${pieceLink(s.id)}${s.from ? ` from ${itemLink(s.from)}` : ""}</div>`;
-    case "note": return `<div class="r">${kind}<span>${esc(s.n)}</span> ${s.pl ? `<span class="dim">${esc(s.pl)}</span>` : ""} ${s.ti != null ? tb(s.ti) : ""}</div>`;
+    case "note": return `<div class="r">${kind}<span>${esc(s.n)}</span> ${placeRef(s.pl)} ${s.ti != null ? tb(s.ti) : ""}</div>`;
     case "trader": return `<div class="r">${kind}<a href="#traders">${esc(s.n)}</a> <b>${s.price}</b> coins${s.stack > 1 ? ` for ${s.stack}` : ""} <span class="dim">${esc(s.pl || "")}</span>${s.req ? ` <span class="tag">needs ${esc(s.req)}</span>` : ""} ${tb(s.ti)}</div>`;
   }
   return `<div class="r">${kind}${esc(s.id)}</div>`;
