@@ -19,12 +19,12 @@
 <!-- ?v= numbers make browsers fetch fresh files after an update. Bump them each update. -->
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;600;700&display=swap">
-<link rel="stylesheet" href="codex.css?v=15">
+<link rel="stylesheet" href="codex.css?v=16">
 </head>
 <body>
 <header class="top">
   <div class="bar">
-    <a class="brand" href="#home"><img class="logo" src="hugin.webp" alt="" width="96" height="96"><span>Valheim Codex</span></a>
+    <div class="brandwrap"><a class="brand" href="#home"><img class="logo" src="hugin.webp" alt="" width="96" height="96"><span>Valheim Codex</span></a><a id="rbadge" class="rbadge" href="#advice" hidden><img src="excl.webp" alt="Hugin has advice for you"></a></div>
     <div class="search">
       <input id="q" type="search" placeholder="Search items, mobs, pieces, prefab names…" autocomplete="off" spellcheck="false">
       <div id="qres" class="qres" hidden></div>
@@ -45,6 +45,7 @@
     <a href="#places" data-n="places">Places</a>
     <a href="#comfort" data-n="comfort">Comfort</a>
     <a href="#seasonal" data-n="seasonal">Seasonal</a>
+    <a href="#advice" data-n="advice">Advice</a>
     <a href="#list" data-n="list">Shopping list <span id="listcount"></span></a>
   </nav>
   <nav class="bnav"><span id="biomenav" class="biomenav"></span></nav>
@@ -56,8 +57,8 @@
 </footer>
 <div id="tip" class="tip" hidden></div>
 <div id="toast" class="toast" hidden></div>
-<script src="codex.js?v=15"></script>
-<script src="codex-pages.js?v=15"></script>
-<script src="codex-extras.js?v=15"></script>
+<script src="codex.js?v=16"></script>
+<script src="codex-pages.js?v=16"></script>
+<script src="codex-extras.js?v=16"></script>
 </body>
 </html>

@@ -38,7 +38,7 @@ const LS = {
   set(k, v) { try { localStorage.setItem("vcodex." + k, JSON.stringify(v)); } catch (e) { } },
 };
 const IX = {}; // indexes built per dump
-const DATA_VERSION = "12"; // bump when data/Vanilla.js changes so browsers fetch the new file
+const DATA_VERSION = "14"; // bump when data/Vanilla.js changes so browsers fetch the new file
 
 // ---------------------------------------------------------------- helpers
 const $ = s => document.querySelector(s);
@@ -255,7 +255,11 @@ function initOptions() {
   const rs = $("#reach");
   rs.innerHTML = BIOMES.map(b => `<option value="${b.t}">${esc(b.n)}</option>`).join("");
   S.reach = LS.get("reach", 7); rs.value = S.reach;
-  rs.onchange = () => { S.reach = +rs.value; LS.set("reach", S.reach); renderBiomeNav(); route(); };
+  rs.onchange = () => {
+    const prev = S.reach; S.reach = +rs.value; LS.set("reach", S.reach);
+    if (S.reach < prev) ravenForgetAbove(S.reach); // going back: Hugin's later messages count as new again when you get there
+    renderBiomeNav(); route();
+  };
   S.showUnused = LS.get("unused", false);
   loadDump("Vanilla");
 }
@@ -301,6 +305,7 @@ function route() {
   try { main.innerHTML = fn(arg); } catch (err) { console.error(err); main.innerHTML = `<div class="note warnnote">Something went wrong showing this page: ${esc(err.message)}</div>`; }
   document.querySelectorAll(".nav a").forEach(a => a.classList.toggle("on", a.dataset.n === page || a.dataset.n === h));
   if (ROUTES[page] && ROUTES[page].after) ROUTES[page].after(arg);
+  ravenBadge();
   const title = main.querySelector("h1");
   document.title = (title && page !== "home" ? title.textContent + " – " : "") + "Valheim Codex";
   if (!route.keepScroll) window.scrollTo(0, 0);
@@ -436,10 +441,44 @@ function seasonStrip(ev) {
 // notes from corrections.json, keyed like "item/OnionSeeds", "mob/Troll", "biome/3"
 function noteBox(key) {
   const n = D.notes && D.notes[key];
-  if (!n) return "";
-  return [].concat(n).map(t => `<div class="note tipnote"><b>Note:</b> ${esc(t)}</div>`).join("");
+  const notes = n ? [].concat(n).map(t => `<div class="note tipnote"><b>Note:</b> ${esc(t)}</div>`).join("") : "";
+  return notes + (key.startsWith("item/") ? "" : ravenBox(key)); // item pages show Hugin near the top instead
+}
+// ---------------------------------------------------------------- Hugin & Munin (messages from the game, see #advice)
+const RAVEN_IMG = m => m ? "munin.webp" : "hugin.webp";
+function ravenText(t) { return esc(t).replace(/\[\[(.*?)\]\]/gs, '<b class="hl">$1</b>').replace(/\n/g, "<br>"); }
+function ravenName(r) { return r.m ? "Munin" : "Hugin"; }
+// small "Hugin says" boxes for messages related to a page (key like "item/Hammer", "biome/1", "mob/GoblinKing")
+function ravenBox(key) {
+  if (!D || !D.hugin) return "";
+  return D.hugin.filter(r => (r.rel || []).includes(key) && visible(r.ti)).map(r => `<div class="raven">
+    <img class="rav" src="${RAVEN_IMG(r.m)}" alt="${ravenName(r)}"><div class="rbody"><div class="rhead"><img class="ex" src="excl.webp" alt="">${ravenName(r)} says${r.topic ? `: <b>${esc(r.topic)}</b>` : ""}</div>
+    <div class="rtext">${ravenText(r.text)}</div><a class="small" href="#advice">All of Hugin's and Munin's advice →</a></div></div>`).join("");
+}
+// glowing "!" over the logo while there are messages for your biomes you haven't read on the site yet
+function ravenUnread() {
+  if (!D || !D.hugin) return [];
+  const read = new Set(LS.get("ravenRead", []));
+  return D.hugin.filter(r => visible(r.ti) && !read.has(r.id));
+}
+function ravenBadge() {
+  const b = document.getElementById("rbadge"); if (!b) return;
+  const n = ravenUnread().length;
+  b.hidden = n === 0;
+  b.title = n ? `Hugin has ${n} message${n > 1 ? "s" : ""} for you` : "";
+}
+// lowering "I've reached" forgets reads for messages from later biomes, so Hugin greets you again as you progress
+function ravenForgetAbove(t) {
+  if (!D || !D.hugin) return;
+  const later = new Set(D.hugin.filter(r => (r.ti ?? 0) > t).map(r => r.id));
+  LS.set("ravenRead", LS.get("ravenRead", []).filter(id => !later.has(id)));
+}
+function ravenMarkRead() {
+  const read = new Set(LS.get("ravenRead", []));
+  D.hugin.filter(r => visible(r.ti)).forEach(r => read.add(r.id));
+  LS.set("ravenRead", [...read]); ravenBadge();
 }
 // (lists and detail pages are defined in part 2 below)
-window.__codex = { SEASON_INFO, seasonActive, activeSeason, seasonTag, noteBox, isBoss, ROUTES, D: () => D, IX, S, BIOMES, BKEY, BKEYNAME, CATS, CATNAME, DTYPES, DNAME, PIECE_CAT, BOSS_NAMES, esc, fmt, pct, tname, tb, visible, secs, itemLink, mobLink, pieceLink, stationLink, costList, cmd, dmgMods, itemIcon, mobIcon, pieceIcon, route, LS, toast };
+window.__codex = { ravenBox, ravenText, ravenName, RAVEN_IMG, ravenMarkRead, ravenBadge, SEASON_INFO, seasonActive, activeSeason, seasonTag, noteBox, isBoss, ROUTES, D: () => D, IX, S, BIOMES, BKEY, BKEYNAME, CATS, CATNAME, DTYPES, DNAME, PIECE_CAT, BOSS_NAMES, esc, fmt, pct, tname, tb, visible, secs, itemLink, mobLink, pieceLink, stationLink, costList, cmd, dmgMods, itemIcon, mobIcon, pieceIcon, route, LS, toast };
 window.addEventListener("DOMContentLoaded", () => setTimeout(initOptions, 0));
 })();

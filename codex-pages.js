@@ -2,7 +2,7 @@
 "use strict";
 (function () {
 const X = window.__codex;
-const { seasonTag, noteBox, isBoss, ROUTES, IX, S, BIOMES, BKEY, BKEYNAME, CATS, CATNAME, DTYPES, DNAME, PIECE_CAT, esc, fmt, pct, tname, tb, visible, secs,
+const { ravenBox, seasonTag, noteBox, isBoss, ROUTES, IX, S, BIOMES, BKEY, BKEYNAME, CATS, CATNAME, DTYPES, DNAME, PIECE_CAT, esc, fmt, pct, tname, tb, visible, secs,
   itemLink, mobLink, pieceLink, stationLink, costList, cmd, dmgMods, itemIcon, mobIcon, pieceIcon, LS } = X;
 let D;
 const fresh = () => (D = X.D());
@@ -116,6 +116,7 @@ ROUTES.item = function (id) {
     <div class="meta">${tb(it.ti)}<span class="tag">${esc(it.s || CATNAME[it.c] || it.c)}</span>${it.sk ? `<span class="tag">Skill: ${esc(it.sk)}</span>` : ""}${it.uo ? `<span class="tag uo">No known source</span>` : ""}${it.nv ? `<span class="tag nv">Game files only</span>` : ""}</div>
     ${it.d ? `<div class="desc">${esc(it.d)}</div>` : ""}
     <div class="cmd"><span class="small">Prefab</span> ${cmd(id)} <span class="small">Spawn</span> ${cmd(`spawn ${id} ${it.st > 1 ? Math.min(it.st, 50) : 1}${mq > 1 ? " " + mq : ""}`)}</div></div></div>`;
+  h += ravenBox("item/" + id);
 
   // ---- stats
   const kv = [];

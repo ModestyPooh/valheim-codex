@@ -2,7 +2,7 @@
 "use strict";
 (function () {
 const X = window.__codex;
-const { SEASON_INFO, seasonActive, seasonTag, ROUTES, IX, S, BIOMES, esc, fmt, tname, tb, visible, secs, itemLink, mobLink, pieceLink, stationLink, costList, itemIcon, noteBox, LS, toast } = X;
+const { ravenText, ravenName, RAVEN_IMG, ravenMarkRead, SEASON_INFO, seasonActive, seasonTag, ROUTES, IX, S, BIOMES, esc, fmt, tname, tb, visible, secs, itemLink, mobLink, pieceLink, stationLink, costList, itemIcon, noteBox, LS, toast } = X;
 let D;
 const fresh = () => (D = X.D());
 
@@ -398,6 +398,43 @@ function comfortRules() {
 // ================================================================= SEASONAL
 const SEASONS = ["Yule", "Midsummer", "Halloween"];
 function giftSize(p) { const d = (p.d || "").toLowerCase(); return d.includes("small") ? "small" : d.includes("large") ? "large" : "medium"; }
+// ================================================================= HUGIN & MUNIN
+// Every message the ravens give in the game (from hugin.json), grouped by the biome it belongs to.
+function relLink(k) {
+  const [kind, id] = k.split("/");
+  if (k === "#food") return `<a href="#food">Food</a>`;
+  if (k === "#traders") return `<a href="#traders">Traders</a>`;
+  if (kind === "item" && D.items[id]) return itemLink(id);
+  if (kind === "mob" && D.creatures[id]) return mobLink(id);
+  if (kind === "biome" && BIOMES[+id]) return `<a class="t${id}" href="#biome/${id}">${esc(BIOMES[+id].n)}</a>`;
+  return "";
+}
+ROUTES.advice = function () {
+  fresh();
+  const all = D.hugin || [];
+  if (!all.length) return `<h1>Hugin &amp; Munin</h1><p class="empty">No raven messages in this data.</p>`;
+  const shown = all.filter(r => visible(r.ti));
+  const hidden = all.length - shown.length;
+  const groups = {};
+  shown.forEach(r => (groups[r.ti ?? 0] = groups[r.ti ?? 0] || []).push(r));
+  return `<div class="ravhead">
+      <div class="ravpic"><img src="hugin.webp" alt="Hugin"><span>Hugin</span></div>
+      <div class="ravintro"><h1>Hugin &amp; Munin</h1>
+        <p>Odin's two ravens watch over you in Valheim. <b>Hugin</b> lands next to you with advice whenever you reach a milestone: your first death, your first ore, a new biome. Later in your journey his brother <b>Munin</b> joins him, with darker words from the Allfather.</p>
+        <p class="small">These are their messages exactly as the game shows them, with when each one appears. Messages from biomes past your "I've reached" setting are hidden.</p></div>
+      <div class="ravpic"><img class="flip" src="munin.webp" alt="Munin"><span>Munin</span></div></div>
+    ${Object.keys(groups).sort((a, b) => a - b).map(t => `<h2 class="t${t}">${esc(BIOMES[t].n)}</h2><div class="ravlist">${groups[t].map(r => {
+      const rel = (r.rel || []).map(relLink).filter(Boolean);
+      return `<div class="raven big" id="r-${esc(r.id)}"><img class="rav" src="${RAVEN_IMG(r.m)}" alt="${ravenName(r)}"><div class="rbody">
+        <div class="rhead"><img class="ex" src="excl.webp" alt="">${esc(r.label || ravenName(r))}</div>
+        ${r.topic ? `<div class="rtopic">${esc(r.topic)}</div>` : ""}
+        <div class="rtext">${ravenText(r.text)}</div>
+        ${r.when ? `<div class="rwhen"><b>When:</b> ${esc(r.when)}</div>` : ""}
+        ${rel.length ? `<div class="rrel">${rel.join("")}</div>` : ""}</div></div>`; }).join("")}</div>`).join("")}
+    ${hidden ? `<p class="small">${hidden} more message${hidden > 1 ? "s" : ""} from later biomes ${hidden > 1 ? "are" : "is"} hidden by your "I've reached" setting.</p>` : ""}`;
+};
+ROUTES.advice.after = function () { ravenMarkRead(); };
+
 ROUTES.seasonal = function () {
   fresh();
   const sea = D.seasonal || {};
